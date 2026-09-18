@@ -1,7 +1,12 @@
 
+import { useEffect } from 'react';
 import Banner from '../Components/Banner';
 
 export default function Home() {
+  useEffect(() => {
+    document.title = "Zone-invoice | Home";
+  }, []);
+
   return (
     <div className="space-y-6">
       <Banner />

@@ -1,0 +1,8 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Red dot on top of 'I' -->
+  <circle cx="21" cy="12" r="6" fill="#EF4444" />
+  
+  <!-- 'I' and 'T' text in Black color -->
+  <text x="14" y="52" font-family="Georgia, serif" font-weight="bold" font-size="48" fill="#000000">I</text>
+  <text x="34" y="52" font-family="Georgia, serif" font-weight="bold" font-size="48" fill="#000000">T</text>
+</svg>

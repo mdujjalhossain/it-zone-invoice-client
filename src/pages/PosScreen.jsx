@@ -5,6 +5,10 @@ export default function POSScreen() {
   const [invoiceNo, setInvoiceNo] = useState('');
   const [currentDate, setCurrentDate] = useState('');
 
+  useEffect(() => {
+    document.title = "Zone-invoice | POS";
+  }, []);
+
   const [customer, setCustomer] = useState({
     name: '',
     address: '',
@@ -65,7 +69,7 @@ export default function POSScreen() {
   const handlePrint = () => {
     // Basic Validation before printing
     if (!customer.phone || customer.phone.length < 10) {
-      setErrorMsg('Please enter customer information for invoice print!');
+      setErrorMsg("Please enter customer's information for invoice print!");
       return;
     }
     setErrorMsg('');
