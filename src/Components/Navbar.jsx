@@ -34,7 +34,7 @@ export default function Navbar() {
             <Link
               key={link.path}
               to={link.path}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+              className={`px-4 py-2 rounded-xl text-xs uppercase font-semibold transition-all ${
                 isActive(link.path)
                   ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                   : 'text-gray-400 hover:text-white hover:bg-gray-800/60'
