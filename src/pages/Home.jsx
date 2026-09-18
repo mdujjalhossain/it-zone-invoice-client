@@ -7,7 +7,7 @@ export default function Home() {
       <Banner />
 
       {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl space-y-2">
           <p className="text-xs text-gray-400 font-semibold uppercase">Today's Sales</p>
           <h3 className="text-2xl font-bold text-blue-400">৳ 83,500</h3>

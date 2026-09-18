@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+@media print {
+  nav, header, footer, aside {
+    display: none !important;
+  }
+}

@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 
 export default function Banner() {
   return (
-    <div className="bg-[#111827] border border-gray-800 p-8 rounded-2xl shadow-xl space-y-4">
+    <div className="max-w-7xl mx-auto bg-[#111827] border border-gray-800 p-8 rounded-2xl shadow-xl space-y-4">
       <span className="text-xs uppercase tracking-widest px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full font-semibold">
         Welcome to IT ZONE
       </span>
