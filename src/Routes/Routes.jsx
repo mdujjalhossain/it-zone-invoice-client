@@ -3,6 +3,7 @@ import Root from "../Layout/Root";
 import Home from "../pages/Home";
 import PosScreen from "../pages/posScreen";
 import UnderDevelopment from "../Components/UnderDevelopment";
+import InvoiceHistory from "../pages/InvoiceHistory";
 
 export const router = createBrowserRouter([
     {
@@ -17,6 +18,10 @@ export const router = createBrowserRouter([
             {
                 path: '/pos',
                 Component: PosScreen,
+            },
+            {
+                path: '/invoices',
+                Component: InvoiceHistory,
             },
         ]
     }

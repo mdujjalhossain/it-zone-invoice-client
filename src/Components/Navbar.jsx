@@ -11,6 +11,7 @@ export default function Navbar() {
     { name: 'POS / Billing', path: '/pos' },
     { name: 'Inventory', path: '/inventory' },
     { name: 'Service Tracking', path: '/service' },
+    { name: 'Invoice History', path: '/invoices' },
   ];
 
   const isActive = (path) => location.pathname === path;

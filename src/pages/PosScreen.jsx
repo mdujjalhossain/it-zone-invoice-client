@@ -77,39 +77,39 @@ export default function POSScreen() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       
       {/* ----- PRINT ONLY INVOICE TEMPLATE ----- */}
-      <div className="hidden print:flex flex-col justify-between bg-white text-black p-8 w-[210mm] h-[280mm] mx-auto text-xs font-sans box-border relative overflow-hidden">
+      <div className="hidden print:flex flex-col justify-between bg-white text-black p-14 w-[210mm] h-[270mm] mx-auto font-sans box-border relative overflow-hidden">
         
         <div>
           {/* Invoice Header */}
-          <div className="flex justify-between items-start border-b-2 border-gray-800 pb-3 mb-3">
+          <div className="flex justify-between items-start border-b-2 border-gray-800 pt-10 pb-3 mb-3">
             <div>
               <h1 className="text-2xl font-black tracking-wider text-blue-600">IT ZONE</h1>
-              <p className="text-[10px] text-gray-600 font-semibold mt-0.5">Shop No. E-174, Sena Complex, Nabinagar, Savar, Dhaka</p>
-              <p className="text-[10px] text-gray-600">Phone: +880 1624-687651</p>
+              <p className="text-[14px] text-gray-600 font-semibold mt-0.5">Shop No. E-174, Sena Complex, Nabinagar, Savar, Dhaka</p>
+              <p className="text-[14px] text-gray-600">Phone: +880 1624-687651</p>
             </div>
             <div className="text-right">
               <h2 className="text-xl font-bold uppercase tracking-widest text-gray-800">INVOICE</h2>
-              <p className="text-[10px] text-gray-600 mt-0.5"><span className="font-semibold">Invoice No:</span> {invoiceNo}</p>
-              <p className="text-[10px] text-gray-600"><span className="font-semibold">Date:</span> {currentDate}</p>
+              <p className="text-[14px] text-gray-600 mt-0.5"><span className="font-semibold">Invoice No:</span> {invoiceNo}</p>
+              <p className="text-[14px] text-gray-600"><span className="font-semibold">Date:</span> {currentDate}</p>
             </div>
           </div>
 
           {/* Seller & Bill To Section */}
           <div className="grid grid-cols-2 gap-4 mb-3 bg-gray-50 p-2.5 rounded border border-gray-200">
             <div>
-              <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">Seller</h3>
+              <h3 className="text-[14px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">Seller</h3>
               <p className="font-bold text-gray-900">IT ZONE</p>
-              <p className="text-[10px] text-gray-600">Savar Sena Complex</p>
-              <p className="text-[10px] text-gray-600">Phone: +880 1624-687651</p>
+              <p className="text-[14px] text-gray-600">Savar Sena Complex</p>
+              <p className="text-[14px] text-gray-600">Phone: +8801624687651</p>
             </div>
             <div>
-              <h3 className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">Bill To</h3>
+              <h3 className="text-[14px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">Bill To</h3>
               <p className="font-bold text-gray-900">{customer.name || '[Customer Name]'}</p>
-              <p className="text-[10px] text-gray-600">Address: {customer.address || '[Customer Address]'}</p>
-              <p className="text-[10px] text-gray-600">Phone: {customer.phone || '[Contact No]'}</p>
+              <p className="text-[14px] text-gray-600">Address: {customer.address || '[Customer Address]'}</p>
+              <p className="text-[14px] text-gray-600">Phone: +88{customer.phone || '[Contact No]'}</p>
             </div>
           </div>
 
@@ -164,7 +164,7 @@ export default function POSScreen() {
           </div>
 
           {/* Warranty & Terms Section */}
-          <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50 text-[9px] space-y-1 text-gray-700 mb-4">
+          <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50 text-[12px] space-y-1 text-gray-700 mb-4 mt-10">
             <p className="font-bold text-black uppercase tracking-wide border-b border-gray-200 pb-1 mb-1">Warranty & Replacement Terms:</p>
             <ul className="list-disc pl-4 space-y-0.5">
               <li><span className="font-semibold">14 Days Replacement Guarantee</span> for manufacturing defects.</li>
