@@ -5,6 +5,7 @@ import PosScreen from "../pages/posScreen";
 import UnderDevelopment from "../Components/UnderDevelopment";
 import InvoiceHistory from "../pages/InvoiceHistory";
 import Inventory from "../pages/Inventory";
+import ServiceTracking from "../pages/ServiceTracking";
 
 export const router = createBrowserRouter([
     {
@@ -28,6 +29,11 @@ export const router = createBrowserRouter([
                 path: '/inventory',
                 Component: Inventory,
             },
+            {
+                path: '/service',
+                Component: ServiceTracking,
+            },
+
         ]
     }
 ])

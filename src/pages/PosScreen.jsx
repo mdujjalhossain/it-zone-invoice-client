@@ -6,7 +6,7 @@ export default function POSScreen() {
   const [currentDate, setCurrentDate] = useState('');
 
   useEffect(() => {
-    document.title = "Zone-invoice | POS";
+    document.title = "IT Zone-Inventory | POS";
   }, []);
 
   const [customer, setCustomer] = useState({

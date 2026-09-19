@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Printer, Calendar, ShieldCheck, FileText, X } from 'lucide-react';
 
 export default function InvoiceHistoryScreen() {
+
+    useEffect(() => {
+        document.title = "IT Zone-Inventory | Invoice-History";
+      }, []);
+
   const [invoices, setInvoices] = useState([
     {
       id: 'ITZ-748890',

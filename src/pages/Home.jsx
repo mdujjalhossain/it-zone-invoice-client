@@ -4,7 +4,7 @@ import Banner from '../Components/Banner';
 
 export default function Home() {
   useEffect(() => {
-    document.title = "Zone-invoice | Home";
+    document.title = "IT Zone-Inventory | Home";
   }, []);
 
   return (

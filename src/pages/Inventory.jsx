@@ -1,7 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Plus, Package, AlertTriangle, Tag, DollarSign, Trash2, X } from 'lucide-react';
 
 export default function Inventory() {
+
+    useEffect(() => {
+        document.title = "IT Zone-Inventory | Inventory";
+      }, []);
+
   const [products, setProducts] = useState([
     { id: 1, name: 'HP ProBook 440 G9 Laptop', category: 'Laptop', stock: 5, buyPrice: 58000, sellPrice: 65000 },
     { id: 2, name: 'Dahua 2MP Full HD CC Camera', category: 'Security', stock: 2, buyPrice: 1800, sellPrice: 2200 },
@@ -31,7 +36,7 @@ export default function Inventory() {
   const handleAddProduct = (e) => {
     e.preventDefault();
     if (!newProduct.name || newProduct.stock === '' || newProduct.buyPrice === '' || newProduct.sellPrice === '') {
-      setErrorMsg('Shobgulo field thikmoto fill up korun!');
+      setErrorMsg('Please fill the fields!');
       return;
     }
 
