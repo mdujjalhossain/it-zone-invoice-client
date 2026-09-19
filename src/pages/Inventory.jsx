@@ -1,23 +1,19 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Package, AlertTriangle, Tag, DollarSign, Trash2, X } from 'lucide-react';
+import { Search, Plus, Package, AlertTriangle, Tag, DollarSign, Trash2, X, PlusCircle, MinusCircle } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function Inventory() {
 
     useEffect(() => {
         document.title = "IT Zone-Inventory | Inventory";
+        fetchProducts();
       }, []);
 
-  const [products, setProducts] = useState([
-    { id: 1, name: 'HP ProBook 440 G9 Laptop', category: 'Laptop', stock: 5, buyPrice: 58000, sellPrice: 65000 },
-    { id: 2, name: 'Dahua 2MP Full HD CC Camera', category: 'Security', stock: 2, buyPrice: 1800, sellPrice: 2200 },
-    { id: 3, name: '1TB Surveillance HDD', category: 'Accessories', stock: 12, buyPrice: 3800, sellPrice: 4500 },
-    { id: 4, name: 'A4Tech Wireless Keyboard & Mouse', category: 'Accessories', stock: 1, buyPrice: 1200, sellPrice: 1600 }
-  ]);
-
+  const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // Form state for adding/editing product
   const [newProduct, setNewProduct] = useState({
     name: '',
     category: 'Laptop',
@@ -28,20 +24,35 @@ export default function Inventory() {
 
   const [errorMsg, setErrorMsg] = useState('');
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const fetchProducts = async () => {
+    try {
+      const res = await fetch('http://localhost:3000/products');
+      const data = await res.json();
+      if (data.success) {
+        setProducts(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch products:', err);
+    }
+  };
 
-  const handleAddProduct = (e) => {
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          p.category.toLowerCase().includes(searchTerm.toLowerCase());
+    if (showOnlyLowStock) {
+      return matchesSearch && p.stock <= 3;
+    }
+    return matchesSearch;
+  });
+
+  const handleAddProduct = async (e) => {
     e.preventDefault();
     if (!newProduct.name || newProduct.stock === '' || newProduct.buyPrice === '' || newProduct.sellPrice === '') {
-      setErrorMsg('Please fill the fields!');
+      setErrorMsg('Please fill out all required fields!');
       return;
     }
 
     const item = {
-      id: Date.now(),
       name: newProduct.name,
       category: newProduct.category,
       stock: Number(newProduct.stock),
@@ -49,15 +60,152 @@ export default function Inventory() {
       sellPrice: Number(newProduct.sellPrice)
     };
 
-    // Functional state update ensuring immutability
-    setProducts(prev => [item, ...prev]);
-    setIsModalOpen(false);
-    setNewProduct({ name: '', category: 'Laptop', stock: '', buyPrice: '', sellPrice: '' });
-    setErrorMsg('');
+    try {
+      const res = await fetch('http://localhost:3000/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setProducts(prev => [data.data, ...prev]);
+        setIsModalOpen(false);
+        setNewProduct({ name: '', category: 'Laptop', stock: '', buyPrice: '', sellPrice: '' });
+        setErrorMsg('');
+      } else {
+        setErrorMsg(data.error || 'Failed to save product');
+      }
+    } catch (err) {
+      console.error('Error posting product:', err);
+      setErrorMsg('Network error occurred');
+    }
   };
 
-  const handleDelete = (id) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
+  const handleUpdateStock = async (item, changeAmount) => {
+    const targetId = item._id || item.id;
+    
+    // Interactive and conversational messaging
+    const actionType = changeAmount > 0 ? 'Stock Addition' : 'New Sale';
+    const actionDesc = changeAmount > 0 
+      ? `Would you like to add 1 unit to "${item.name}"?` 
+      : `Did you sell 1 "${item.name}" today?`;
+
+    const result = await Swal.fire({
+      title: actionType,
+      text: actionDesc,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: changeAmount > 0 ? '#10b981' : '#ef4444',
+      cancelButtonColor: '#374151',
+      confirmButtonText: changeAmount > 0 ? 'Yes, Add Stock!' : 'Yes, Sold! (-1)',
+      cancelButtonText: 'Cancel',
+      background: '#111827',
+      color: '#fff'
+    });
+
+    if (!result.isConfirmed) return;
+
+    const newQty = Number(item.stock) + changeAmount;
+    
+    if (newQty < 0) {
+      Swal.fire({
+        title: 'Invalid Operation',
+        text: 'Stock cannot drop below zero!',
+        icon: 'warning',
+        background: '#111827',
+        color: '#fff',
+        confirmButtonColor: '#2563eb'
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:3000/products/${targetId}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: changeAmount })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setProducts(prev => prev.map(p => (p._id || p.id) === targetId ? { ...p, stock: newQty } : p));
+        Swal.fire({
+          title: 'Success!',
+          text: changeAmount > 0 ? 'Stock successfully updated!' : 'Sale recorded successfully!',
+          icon: 'success',
+          background: '#111827',
+          color: '#fff',
+          timer: 1200,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire({
+          title: 'Error!',
+          text: data.error || 'Failed to update stock',
+          icon: 'error',
+          background: '#111827',
+          color: '#fff'
+        });
+      }
+    } catch (err) {
+      console.error('Error updating stock:', err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#374151',
+      confirmButtonText: 'Yes, delete it!',
+      background: '#111827',
+      color: '#fff'
+    });
+
+    if (!result.isConfirmed) return;
+
+    const targetId = id;
+    try {
+      const res = await fetch(`http://localhost:3000/products/${targetId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setProducts(prev => prev.filter(p => (p._id || p.id) !== targetId));
+        Swal.fire({
+          title: 'Deleted!',
+          text: 'Product has been deleted successfully.',
+          icon: 'success',
+          background: '#111827',
+          color: '#fff',
+          confirmButtonColor: '#2563eb',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire({
+          title: 'Error!',
+          text: data.error || 'Failed to delete',
+          icon: 'error',
+          background: '#111827',
+          color: '#fff'
+        });
+      }
+    } catch (err) {
+      console.error('Error deleting product:', err);
+      Swal.fire({
+        title: 'Network Error!',
+        text: 'Could not connect to the server.',
+        icon: 'error',
+        background: '#111827',
+        color: '#fff'
+      });
+    }
   };
 
   const totalStockValue = products.reduce((acc, item) => acc + (item.stock * item.sellPrice), 0);
@@ -82,7 +230,7 @@ export default function Inventory() {
         </button>
       </div>
 
-      {/* Metrics Row */}
+      {/* Metrics Row (Normal Static Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="bg-[#111827] border border-gray-800 p-5 rounded-2xl shadow-xl flex items-center gap-4">
           <div className="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-xl">
@@ -119,9 +267,21 @@ export default function Inventory() {
       <div className="bg-[#111827] border border-gray-800 rounded-2xl shadow-xl overflow-hidden space-y-4">
         
         <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-            <Tag size={16} className="text-blue-400" /> Current Stock List
-          </h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+              <Tag size={16} className="text-blue-400" /> Current Stock List
+            </h3>
+            <button
+              onClick={() => setShowOnlyLowStock(prev => !prev)}
+              className={`text-xs px-3 py-1 rounded-xl font-medium transition-all cursor-pointer border ${
+                showOnlyLowStock 
+                  ? 'bg-red-500/20 border-red-500 text-red-400' 
+                  : 'bg-gray-900 border-gray-800 text-gray-400 hover:text-white'
+              }`}
+            >
+              {showOnlyLowStock ? 'Showing Low Stock Only (Reset)' : 'Filter Low Stock'}
+            </button>
+          </div>
 
           <div className="relative w-full sm:w-80">
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
@@ -152,27 +312,52 @@ export default function Inventory() {
             <tbody className="divide-y divide-gray-800/60 text-gray-300">
               {filteredProducts.length > 0 ? (
                 filteredProducts.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-900/40 transition-all">
-                    <td className="py-3.5 px-5 font-semibold text-white">{item.name}</td>
+                  <tr 
+                    key={item._id || item.id} 
+                    className={`transition-all ${
+                      item.stock <= 3 
+                        ? 'bg-red-500/10 hover:bg-red-500/20 border-l-4 border-red-500' 
+                        : 'hover:bg-gray-900/40'
+                    }`}
+                  >
+                    <td className="py-3.5 px-5 font-semibold text-white">
+                      {item.name}
+                    </td>
                     <td className="py-3.5 px-5">
                       <span className="px-2.5 py-1 bg-gray-800 text-gray-300 rounded-lg text-xs font-medium">
                         {item.category}
                       </span>
                     </td>
                     <td className="py-3.5 px-5 text-center">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                        item.stock <= 3 
-                          ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
-                          : 'bg-green-500/10 text-green-400 border border-green-500/20'
-                      }`}>
-                        {item.stock} Units {item.stock <= 3 && '(Low)'}
-                      </span>
+                      <div className="inline-flex items-center gap-2 bg-gray-900 px-3 py-1 rounded-xl border border-gray-800">
+                        <button 
+                          onClick={() => handleUpdateStock(item, -1)}
+                          className="text-red-400 hover:text-red-300 transition-all cursor-pointer"
+                          title="Record Sale (-1 Stock)"
+                        >
+                          <MinusCircle size={16} />
+                        </button>
+                        <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold ${
+                          item.stock <= 3 
+                            ? 'bg-red-500/20 text-red-400 animate-pulse' 
+                            : 'bg-green-500/10 text-green-400'
+                        }`}>
+                          {item.stock} Units {item.stock <= 3 && '(Low)'}
+                        </span>
+                        <button 
+                          onClick={() => handleUpdateStock(item, 1)}
+                          className="text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer"
+                          title="Add Stock (+1 Stock)"
+                        >
+                          <PlusCircle size={16} />
+                        </button>
+                      </div>
                     </td>
                     <td className="py-3.5 px-5 text-right text-gray-400">৳ {item.buyPrice}</td>
                     <td className="py-3.5 px-5 text-right font-bold text-blue-400">৳ {item.sellPrice}</td>
                     <td className="py-3.5 px-5 text-center space-x-2">
                       <button 
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDelete(item._id || item.id)}
                         className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-all cursor-pointer"
                         title="Delete Item"
                       >
@@ -184,7 +369,7 @@ export default function Inventory() {
               ) : (
                 <tr>
                   <td colSpan="6" className="text-center py-8 text-gray-500 text-sm">
-                    Kono matching product pawa jayni!
+                    No matching data found!
                   </td>
                 </tr>
               )}

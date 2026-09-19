@@ -1,52 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Search, Plus, Wrench, Laptop, X } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function ServiceTracking() {
 
     useEffect(() => {
         document.title = "IT Zone-Inventory | Service-tracking";
+        fetchTickets();
       }, []);
 
-  const [tickets, setTickets] = useState([
-    {
-      id: 'SRV-5091',
-      date: '2026-09-18',
-      customerName: 'Md. Rahim Ahmed',
-      phone: '01712345678',
-      deviceModel: 'HP ProBook 440 G9',
-      issue: 'Display flickering and sudden shutdown issue.',
-      status: 'Repairing',
-      cost: 1500,
-      advance: 500
-    },
-    {
-      id: 'SRV-5092',
-      date: '2026-09-17',
-      customerName: 'Tanvir Hossain',
-      phone: '01898765432',
-      deviceModel: 'Dahua 2MP CC Camera',
-      issue: 'Night vision infrared not working properly.',
-      status: 'Ready for Delivery',
-      cost: 800,
-      advance: 200
-    },
-    {
-      id: 'SRV-5093',
-      date: '2026-09-19',
-      customerName: 'Nazmul Islam',
-      phone: '01511223344',
-      deviceModel: 'Dell Inspiron 15',
-      issue: 'OS corrupted / Windows boot loop.',
-      status: 'Diagnosing',
-      cost: 500,
-      advance: 0
-    }
-  ]);
-
+  const [tickets, setTickets] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // New ticket form state
   const [newTicket, setNewTicket] = useState({
     customerName: '',
     phone: '',
@@ -59,6 +25,19 @@ export default function ServiceTracking() {
 
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Fetch tickets (GET)
+  const fetchTickets = async () => {
+    try {
+      const res = await fetch('http://localhost:3000/services');
+      const data = await res.json();
+      if (data.success) {
+        setTickets(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch tickets:', err);
+    }
+  };
+
   const filteredTickets = tickets.filter(t =>
     t.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     t.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,7 +45,8 @@ export default function ServiceTracking() {
     t.deviceModel.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddTicket = (e) => {
+  // Add Ticket (POST)
+  const handleAddTicket = async (e) => {
     e.preventDefault();
     if (!newTicket.customerName || !newTicket.phone || !newTicket.deviceModel || !newTicket.issue) {
       setErrorMsg('Please enter all the information!');
@@ -85,23 +65,65 @@ export default function ServiceTracking() {
       advance: Number(newTicket.advance) || 0
     };
 
-    // Functional state update ensuring immutability
-    setTickets(prev => [ticketItem, ...prev]);
-    setIsModalOpen(false);
-    setNewTicket({
-      customerName: '',
-      phone: '',
-      deviceModel: '',
-      issue: '',
-      status: 'Received',
-      cost: '',
-      advance: ''
-    });
-    setErrorMsg('');
+    try {
+      const res = await fetch('http://localhost:3000/services', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticketItem)
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setTickets(prev => [data.data, ...prev]);
+        setIsModalOpen(false);
+        setNewTicket({
+          customerName: '',
+          phone: '',
+          deviceModel: '',
+          issue: '',
+          status: 'Received',
+          cost: '',
+          advance: ''
+        });
+        setErrorMsg('');
+        Swal.fire({
+          title: 'Success!',
+          text: 'Service ticket created successfully.',
+          icon: 'success',
+          background: '#111827',
+          color: '#fff',
+          confirmButtonColor: '#2563eb',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        setErrorMsg(data.error || 'Failed to create ticket');
+      }
+    } catch (err) {
+      console.error('Error posting ticket:', err);
+      setErrorMsg('Network error occurred');
+    }
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    setTickets(prev => prev.map(t => t.id === id ? { ...t, status: newStatus } : t));
+  // Status Change (PATCH)
+  const handleStatusChange = async (id, newStatus) => {
+    const targetId = id;
+    try {
+      const res = await fetch(`http://localhost:3000/services/${targetId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setTickets(prev => prev.map(t => (t._id || t.id) === targetId ? { ...t, status: newStatus } : t));
+      } else {
+        alert(data.error || 'Failed to update status');
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -177,7 +199,7 @@ export default function ServiceTracking() {
             <tbody className="divide-y divide-gray-800/60 text-gray-300">
               {filteredTickets.length > 0 ? (
                 filteredTickets.map((t) => (
-                  <tr key={t.id} className="hover:bg-gray-900/40 transition-all">
+                  <tr key={t._id || t.id} className="hover:bg-gray-900/40 transition-all">
                     <td className="py-3.5 px-5">
                       <span className="font-bold text-blue-400 block">{t.id}</span>
                       <span className="text-xs text-gray-500">{t.date}</span>
@@ -202,7 +224,7 @@ export default function ServiceTracking() {
                     <td className="py-3.5 px-5 text-center">
                       <select
                         value={t.status}
-                        onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                        onChange={(e) => handleStatusChange(t._id || t.id, e.target.value)}
                         className="bg-gray-900 border border-gray-700 rounded-lg px-2.5 py-1 text-xs text-gray-200 focus:outline-none focus:border-blue-500 cursor-pointer"
                       >
                         <option value="Received">Received</option>
