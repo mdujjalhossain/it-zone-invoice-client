@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, Package, AlertTriangle, Tag, DollarSign, Trash2, X, PlusCircle, MinusCircle } from 'lucide-react';
+import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
 
 export default function Inventory() {
+  useEffect(() => {
+    document.title = "IT Zone-Inventory | Inventory";
+  }, []);
 
-    useEffect(() => {
-        document.title = "IT Zone-Inventory | Inventory";
-        fetchProducts();
-      }, []);
-
-  const [products, setProducts] = useState([]);
+  const { data: rawProducts, setData: setProducts, loading, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/products');
+  
+  const products = rawProducts || [];
   const [searchTerm, setSearchTerm] = useState('');
   const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,18 +24,6 @@ export default function Inventory() {
   });
 
   const [errorMsg, setErrorMsg] = useState('');
-
-  const fetchProducts = async () => {
-    try {
-      const res = await fetch('http://localhost:3000/products');
-      const data = await res.json();
-      if (data.success) {
-        setProducts(data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch products:', err);
-    }
-  };
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -61,7 +50,7 @@ export default function Inventory() {
     };
 
     try {
-      const res = await fetch('http://localhost:3000/products', {
+      const res = await fetch('https://it-zone-invoice-server.vercel.app/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(item)
@@ -69,7 +58,7 @@ export default function Inventory() {
       const data = await res.json();
 
       if (data.success) {
-        setProducts(prev => [data.data, ...prev]);
+        setProducts(prev => [data.data, ...(prev || [])]);
         setIsModalOpen(false);
         setNewProduct({ name: '', category: 'Laptop', stock: '', buyPrice: '', sellPrice: '' });
         setErrorMsg('');
@@ -85,7 +74,6 @@ export default function Inventory() {
   const handleUpdateStock = async (item, changeAmount) => {
     const targetId = item._id || item.id;
     
-    // Interactive and conversational messaging
     const actionType = changeAmount > 0 ? 'Stock Addition' : 'New Sale';
     const actionDesc = changeAmount > 0 
       ? `Would you like to add 1 unit to "${item.name}"?` 
@@ -121,7 +109,7 @@ export default function Inventory() {
     }
 
     try {
-      const res = await fetch(`http://localhost:3000/products/${targetId}/stock`, {
+      const res = await fetch(`https://it-zone-invoice-server.vercel.app/products/${targetId}/stock`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: changeAmount })
@@ -129,7 +117,7 @@ export default function Inventory() {
       const data = await res.json();
 
       if (data.success) {
-        setProducts(prev => prev.map(p => (p._id || p.id) === targetId ? { ...p, stock: newQty } : p));
+        setProducts(prev => (prev || []).map(p => (p._id || p.id) === targetId ? { ...p, stock: newQty } : p));
         Swal.fire({
           title: 'Success!',
           text: changeAmount > 0 ? 'Stock successfully updated!' : 'Sale recorded successfully!',
@@ -170,13 +158,13 @@ export default function Inventory() {
 
     const targetId = id;
     try {
-      const res = await fetch(`http://localhost:3000/products/${targetId}`, {
+      const res = await fetch(`https://it-zone-invoice-server.vercel.app/products/${targetId}`, {
         method: 'DELETE'
       });
       const data = await res.json();
 
       if (data.success) {
-        setProducts(prev => prev.filter(p => (p._id || p.id) !== targetId));
+        setProducts(prev => (prev || []).filter(p => (p._id || p.id) !== targetId));
         Swal.fire({
           title: 'Deleted!',
           text: 'Product has been deleted successfully.',
@@ -214,7 +202,6 @@ export default function Inventory() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       
-      {/* Top Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl">
         <div>
           <span className="text-xs uppercase tracking-widest px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full font-semibold">
@@ -230,7 +217,12 @@ export default function Inventory() {
         </button>
       </div>
 
-      {/* Metrics Row (Normal Static Cards) */}
+      {apiError && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
+          {apiError}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="bg-[#111827] border border-gray-800 p-5 rounded-2xl shadow-xl flex items-center gap-4">
           <div className="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-xl">
@@ -263,7 +255,6 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* Inventory Table Container */}
       <div className="bg-[#111827] border border-gray-800 rounded-2xl shadow-xl overflow-hidden space-y-4">
         
         <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -310,7 +301,13 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/60 text-gray-300">
-              {filteredProducts.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-8 text-gray-400 text-sm">
+                    Loading inventory data...
+                  </td>
+                </tr>
+              ) : filteredProducts.length > 0 ? (
                 filteredProducts.map((item) => (
                   <tr 
                     key={item._id || item.id} 
@@ -379,7 +376,6 @@ export default function Inventory() {
 
       </div>
 
-      {/* Add Product Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#111827] border border-gray-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">

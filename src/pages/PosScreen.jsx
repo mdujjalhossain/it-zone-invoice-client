@@ -92,7 +92,7 @@ export default function POSScreen() {
     };
 
     try {
-      const response = await fetch('http://localhost:3000/invoices', {
+      const response = await fetch('https://it-zone-invoice-server.vercel.app/invoices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ export default function POSScreen() {
       setErrorMsg('Failed to sync invoice with database. Print aborted.');
     }
   };
-  
+
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">

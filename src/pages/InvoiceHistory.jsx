@@ -1,58 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2 } from 'lucide-react';
+import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
 
 export default function InvoiceHistoryScreen() {
+  if (typeof document !== 'undefined') {
+    document.title = "IT Zone-Inventory | Invoice-History";
+  }
 
-    useEffect(() => {
-        document.title = "IT Zone-Inventory | Invoice-History";
-      }, []);
-
-  const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState('');
+  const { data: rawData, setData: setInvoices, loading, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/invoices');
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
-  // Fetch real invoices from backend on component mount
-  useEffect(() => {
-    fetchInvoices();
-  }, []);
+  const formattedInvoices = (rawData || []).map(inv => ({
+    id: inv.invoiceNo || inv._id,
+    mongoId: inv._id,
+    date: inv.currentDate || 'N/A',
+    customerName: inv.customer?.name || 'Unknown',
+    phone: inv.customer?.phone || '',
+    address: inv.customer?.address || 'N/A',
+    items: inv.items || [],
+    discount: inv.discountVal || 0,
+    totalPayable: inv.totalPayable || 0,
+    warranty: '14 Days Replacement & 3 Years Service Warranty'
+  }));
 
-  const fetchInvoices = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('http://localhost:3000/invoices');
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch invoices');
-      }
-
-      // Map MongoDB fields to match the UI component requirements smoothly
-      const formattedInvoices = result.data.map(inv => ({
-        id: inv.invoiceNo || inv._id,
-        mongoId: inv._id, // Original _id for backend delete operations
-        date: inv.currentDate || 'N/A',
-        customerName: inv.customer?.name || 'Unknown',
-        phone: inv.customer?.phone || '',
-        address: inv.customer?.address || 'N/A',
-        items: inv.items || [],
-        discount: inv.discountVal || 0,
-        totalPayable: inv.totalPayable || 0,
-        warranty: '14 Days Replacement & 3 Years Service Warranty'
-      }));
-
-      setInvoices(formattedInvoices);
-    } catch (err) {
-      console.error('Error fetching invoice history:', err);
-      setErrorMsg('Failed to load invoices from database.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle Delete Invoice using SweetAlert2
   const handleDeleteInvoice = async (invoiceId) => {
     const swalResult = await Swal.fire({
       title: 'Are you sure?',
@@ -72,7 +45,7 @@ export default function InvoiceHistoryScreen() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/invoices/${invoiceId}`, {
+      const response = await fetch(`https://it-zone-invoice-server.vercel.app/invoices/${invoiceId}`, {
         method: 'DELETE',
       });
       const result = await response.json();
@@ -81,10 +54,8 @@ export default function InvoiceHistoryScreen() {
         throw new Error(result.error || 'Failed to delete invoice');
       }
 
-      // Update state to remove the deleted invoice from UI
-      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId && inv.mongoId !== invoiceId));
+      setInvoices(prev => prev.filter(inv => inv._id !== invoiceId && inv.invoiceNo !== invoiceId));
       
-      // Close modal if the deleted invoice was currently open
       if (selectedInvoice && (selectedInvoice.id === invoiceId || selectedInvoice.mongoId === invoiceId)) {
         setSelectedInvoice(null);
       }
@@ -110,7 +81,7 @@ export default function InvoiceHistoryScreen() {
     }
   };
 
-  const filteredInvoices = invoices.filter(inv => 
+  const filteredInvoices = formattedInvoices.filter(inv => 
     inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     inv.phone.includes(searchTerm) ||
     inv.customerName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -123,7 +94,6 @@ export default function InvoiceHistoryScreen() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       
-      {/* ----- HIDDEN PRINT TEMPLATE ----- */}
       {selectedInvoice && (
         <div className="hidden print:flex flex-col justify-between bg-white text-black p-14 w-[210mm] h-[270mm] mx-auto font-sans box-border relative overflow-hidden">
           <div>
@@ -211,7 +181,6 @@ export default function InvoiceHistoryScreen() {
         </div>
       )}
 
-      {/* ----- NORMAL WEB UI SCREEN ----- */}
       <div className="print:hidden space-y-6">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl">
@@ -236,9 +205,9 @@ export default function InvoiceHistoryScreen() {
           </div>
         </div>
 
-        {errorMsg && (
+        {apiError && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
-            {errorMsg}
+            {apiError}
           </div>
         )}
 
@@ -315,7 +284,6 @@ export default function InvoiceHistoryScreen() {
 
       </div>
 
-      {/* WEB UI DETAILS MODAL */}
       {selectedInvoice && (
         <div className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#111827] border border-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
