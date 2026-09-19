@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2 } from 'lucide-react';
+import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2 } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
 
@@ -232,11 +232,10 @@ export default function InvoiceHistoryScreen() {
               </thead>
               <tbody className="divide-y divide-gray-800/60 text-gray-300">
                 {loading ? (
-                  <tr>
-                    <td colSpan="6" className="text-center py-8 text-gray-400 text-sm">
-                      Loading invoices from database...
-                    </td>
-                  </tr>
+                  <div className="col-span-3 flex justify-center items-center gap-2 py-12 text-gray-400 text-sm bg-[#111827] border border-gray-800 rounded-xl shadow-xl">
+            <Loader2 className="animate-spin text-blue-500" size={20} />
+            <span>Loading invoices from database...</span>
+          </div>
                 ) : filteredInvoices.length > 0 ? (
                   filteredInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-gray-900/40 transition-all">
