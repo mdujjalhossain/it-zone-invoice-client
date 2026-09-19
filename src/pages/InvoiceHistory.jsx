@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2 } from 'lucide-react';
+import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
 
@@ -54,7 +54,7 @@ export default function InvoiceHistoryScreen() {
         throw new Error(result.error || 'Failed to delete invoice');
       }
 
-      setInvoices(prev => prev.filter(inv => inv._id !== invoiceId && inv.invoiceNo !== invoiceId));
+      setInvoices(prev => (prev || []).filter(inv => inv._id !== invoiceId && inv.invoiceNo !== invoiceId));
       
       if (selectedInvoice && (selectedInvoice.id === invoiceId || selectedInvoice.mongoId === invoiceId)) {
         setSelectedInvoice(null);
@@ -94,6 +94,7 @@ export default function InvoiceHistoryScreen() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       
+      {/* Hidden Print Section */}
       {selectedInvoice && (
         <div className="hidden print:flex flex-col justify-between bg-white text-black p-14 w-[210mm] h-[270mm] mx-auto font-sans box-border relative overflow-hidden">
           <div>
@@ -181,6 +182,7 @@ export default function InvoiceHistoryScreen() {
         </div>
       )}
 
+      {/* Main Screen Content */}
       <div className="print:hidden space-y-6">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl">
@@ -205,9 +207,11 @@ export default function InvoiceHistoryScreen() {
           </div>
         </div>
 
+        {/* API Error Box */}
         {apiError && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
-            {apiError}
+          <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-400 text-sm">
+            <AlertCircle size={18} />
+            <span>Failed to load invoices: {apiError}</span>
           </div>
         )}
 
@@ -232,10 +236,14 @@ export default function InvoiceHistoryScreen() {
               </thead>
               <tbody className="divide-y divide-gray-800/60 text-gray-300">
                 {loading ? (
-                  <div className="col-span-3 flex justify-center items-center gap-2 py-12 text-gray-400 text-sm bg-[#111827] border border-gray-800 rounded-xl shadow-xl">
-            <Loader2 className="animate-spin text-blue-500" size={20} />
-            <span>Loading invoices from database...</span>
-          </div>
+                  <tr>
+                    <td colSpan="6" className="py-12 text-center">
+                      <div className="flex justify-center items-center gap-2 text-gray-400 text-sm">
+                        <Loader2 className="animate-spin text-blue-500" size={20} />
+                        <span>Loading invoices from database...</span>
+                      </div>
+                    </td>
+                  </tr>
                 ) : filteredInvoices.length > 0 ? (
                   filteredInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-gray-900/40 transition-all">
@@ -283,6 +291,7 @@ export default function InvoiceHistoryScreen() {
 
       </div>
 
+      {/* Invoice Detail & Verification Modal */}
       {selectedInvoice && (
         <div className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#111827] border border-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Package, AlertTriangle, Tag, DollarSign, Trash2, X, PlusCircle, MinusCircle } from 'lucide-react';
+import { Search, Plus, Package, AlertTriangle, Tag, DollarSign, Trash2, X, PlusCircle, MinusCircle, Loader2 } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
 
@@ -8,6 +8,7 @@ export default function Inventory() {
     document.title = "IT Zone-Inventory | Inventory";
   }, []);
 
+  // Destructure data, setter, loading status, and error state from the custom useApi hook
   const { data: rawProducts, setData: setProducts, loading, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/products');
   
   const products = rawProducts || [];
@@ -25,6 +26,7 @@ export default function Inventory() {
 
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Filter products based on search keyword (name or category) and low-stock filter toggle
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           p.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -34,6 +36,7 @@ export default function Inventory() {
     return matchesSearch;
   });
 
+  // Add Product Handler (POST)
   const handleAddProduct = async (e) => {
     e.preventDefault();
     if (!newProduct.name || newProduct.stock === '' || newProduct.buyPrice === '' || newProduct.sellPrice === '') {
@@ -71,6 +74,7 @@ export default function Inventory() {
     }
   };
 
+  // Stock Quantity Update Handler (PATCH) - handles incremental additions or sales decrement
   const handleUpdateStock = async (item, changeAmount) => {
     const targetId = item._id || item.id;
     
@@ -141,6 +145,7 @@ export default function Inventory() {
     }
   };
 
+  // Delete Product Handler (DELETE)
   const handleDelete = async (id) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
@@ -196,12 +201,14 @@ export default function Inventory() {
     }
   };
 
+  // Summary Metrics Calculations
   const totalStockValue = products.reduce((acc, item) => acc + (item.stock * item.sellPrice), 0);
   const lowStockCount = products.filter(p => p.stock <= 3).length;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       
+      {/* Top Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl">
         <div>
           <span className="text-xs uppercase tracking-widest px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full font-semibold">
@@ -223,6 +230,7 @@ export default function Inventory() {
         </div>
       )}
 
+      {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="bg-[#111827] border border-gray-800 p-5 rounded-2xl shadow-xl flex items-center gap-4">
           <div className="p-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-xl">
@@ -255,8 +263,10 @@ export default function Inventory() {
         </div>
       </div>
 
+      {/* Main Table Card */}
       <div className="bg-[#111827] border border-gray-800 rounded-2xl shadow-xl overflow-hidden space-y-4">
         
+        {/* Table Controls Header */}
         <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
@@ -288,6 +298,7 @@ export default function Inventory() {
           </div>
         </div>
 
+        {/* Data Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
             <thead>
@@ -302,9 +313,13 @@ export default function Inventory() {
             </thead>
             <tbody className="divide-y divide-gray-800/60 text-gray-300">
               {loading ? (
+                // Display loading spinner while fetching data
                 <tr>
-                  <td colSpan="6" className="text-center py-8 text-gray-400 text-sm">
-                    Loading inventory data...
+                  <td colSpan="6" className="text-center py-12">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <Loader2 size={32} className="text-blue-500 animate-spin" />
+                      <p className="text-sm text-gray-400 font-medium">Loading inventory data...</p>
+                    </div>
                   </td>
                 </tr>
               ) : filteredProducts.length > 0 ? (
@@ -376,6 +391,7 @@ export default function Inventory() {
 
       </div>
 
+      {/* Add Product Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#111827] border border-gray-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">

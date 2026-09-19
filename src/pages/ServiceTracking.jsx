@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Wrench, Laptop, X, Calendar, DollarSign, BarChart3 } from 'lucide-react';
+import { Search, Plus, Wrench, Laptop, X, Calendar, DollarSign, BarChart3, Loader2 } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
 
@@ -8,7 +8,8 @@ export default function ServiceTracking() {
     document.title = "IT Zone-Inventory | Service-tracking";
   }, []);
 
-  const { data: rawTickets, setData: setTickets, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/services');
+  // Destructure the loading state alongside data, setter, and error from the custom useApi hook
+  const { data: rawTickets, setData: setTickets, loading, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/services');
   
   const tickets = rawTickets || [];
   const [searchTerm, setSearchTerm] = useState('');
@@ -149,17 +150,17 @@ export default function ServiceTracking() {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Received':
-        return <span className="px-2.5 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-lg text-xs font-bold">Received</span>;
+        return <span className="px-2.5 py-1 bg-yellow-500/15 text-yellow-400 border border-yellow-500/20 rounded-lg text-xs font-bold">Received</span>;
       case 'Diagnosing':
-        return <span className="px-2.5 py-1 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg text-xs font-bold">Diagnosing</span>;
+        return <span className="px-2.5 py-1 bg-purple-500/15 text-purple-400 border border-purple-500/20 rounded-lg text-xs font-bold">Diagnosing</span>;
       case 'Repairing':
-        return <span className="px-2.5 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-bold">Repairing</span>;
+        return <span className="px-2.5 py-1 bg-blue-500/15 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-bold">Repairing</span>;
       case 'Ready for Delivery':
-        return <span className="px-2.5 py-1 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-xs font-bold">Ready for Delivery</span>;
+        return <span className="px-2.5 py-1 bg-green-500/15 text-green-400 border border-green-500/20 rounded-lg text-xs font-bold">Ready for Delivery</span>;
       case 'Delivered':
         return <span className="px-2.5 py-1 bg-gray-700 text-gray-300 border border-gray-600 rounded-lg text-xs font-bold">Delivered</span>;
       case 'Cancelled':
-        return <span className="px-2.5 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold">Cancelled</span>;
+        return <span className="px-2.5 py-1 bg-red-500/15 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold">Cancelled</span>;
       default:
         return null;
     }
@@ -295,7 +296,17 @@ export default function ServiceTracking() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/60 text-gray-300">
-              {filteredTickets.length > 0 ? (
+              {loading ? (
+                // Display loading spinner while fetching data
+                <tr>
+                  <td colSpan="6" className="text-center py-12">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <Loader2 size={32} className="text-blue-500 animate-spin" />
+                      <p className="text-sm text-gray-400 font-medium">Loading service tickets...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredTickets.length > 0 ? (
                 filteredTickets.map((t) => {
                   const isLocked = t.status === 'Delivered' || t.status === 'Cancelled';
 
