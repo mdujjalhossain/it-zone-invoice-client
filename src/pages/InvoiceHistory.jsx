@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Printer, Calendar, User, Phone, ShieldCheck, FileText, X } from 'lucide-react';
+import { Search, Printer, Calendar, ShieldCheck, FileText, X } from 'lucide-react';
 
 export default function InvoiceHistoryScreen() {
   const [invoices, setInvoices] = useState([
