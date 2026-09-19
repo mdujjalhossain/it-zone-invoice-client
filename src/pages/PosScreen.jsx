@@ -66,15 +66,54 @@ export default function POSScreen() {
   const discountVal = discount === '' ? 0 : Number(discount);
   const totalPayable = Math.max(0, subtotal - discountVal);
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     // Basic Validation before printing
-    if (!customer.phone || customer.phone.length < 10) {
-      setErrorMsg("Please enter customer's information for invoice print!");
+    if (!customer.name || !customer.phone || customer.phone.length < 10) {
+      setErrorMsg("Please enter valid customer name and phone number for invoice print!");
       return;
     }
+
+    if (items.some(item => !item.productName || item.price <= 0)) {
+      setErrorMsg("Please ensure all items have a product name and valid price!");
+      return;
+    }
+
     setErrorMsg('');
-    window.print();
+
+    // Prepare payload object matching database schema requirements
+    const invoicePayload = {
+      invoiceNo,
+      currentDate,
+      customer,
+      items,
+      subtotal,
+      discountVal,
+      totalPayable
+    };
+
+    try {
+      const response = await fetch('http://localhost:3000/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(invoicePayload),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save invoice');
+      }
+
+      console.log('Invoice saved to DB:', data);
+      // Trigger browser print dialog after successful database transmission
+      window.print();
+    } catch (err) {
+      console.error('Network or database error:', err);
+      setErrorMsg('Failed to sync invoice with database. Print aborted.');
+    }
   };
+  
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">

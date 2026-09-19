@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Search, Printer, Calendar, ShieldCheck, FileText, X } from 'lucide-react';
+import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2 } from 'lucide-react';
+import Swal from 'sweetalert2';
 
 export default function InvoiceHistoryScreen() {
 
@@ -7,38 +8,107 @@ export default function InvoiceHistoryScreen() {
         document.title = "IT Zone-Inventory | Invoice-History";
       }, []);
 
-  const [invoices, setInvoices] = useState([
-    {
-      id: 'ITZ-748890',
-      date: '2026-09-18 02:30 PM',
-      customerName: 'Md. Rahim Ahmed',
-      phone: '01712345678',
-      address: 'Savar, Dhaka',
-      items: [
-        { productName: 'HP ProBook 440 G9 Laptop', quantity: 1, price: 65000 }
-      ],
-      discount: 1000,
-      totalPayable: 64000,
-      warranty: '14 Days Replacement & 3 Years Service Warranty'
-    },
-    {
-      id: 'ITZ-921432',
-      date: '2026-09-15 11:15 AM',
-      customerName: 'Tanvir Hossain',
-      phone: '01898765432',
-      address: 'Nabinagar, Savar',
-      items: [
-        { productName: 'Dahua 2MP Full HD CC Camera', quantity: 4, price: 2200 },
-        { productName: '1TB Surveillance HDD', quantity: 1, price: 4500 }
-      ],
-      discount: 500,
-      totalPayable: 13300,
-      warranty: '1 Year Replacement Warranty'
-    }
-  ]);
-
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+
+  // Fetch real invoices from backend on component mount
+  useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const fetchInvoices = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:3000/invoices');
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch invoices');
+      }
+
+      // Map MongoDB fields to match the UI component requirements smoothly
+      const formattedInvoices = result.data.map(inv => ({
+        id: inv.invoiceNo || inv._id,
+        mongoId: inv._id, // Original _id for backend delete operations
+        date: inv.currentDate || 'N/A',
+        customerName: inv.customer?.name || 'Unknown',
+        phone: inv.customer?.phone || '',
+        address: inv.customer?.address || 'N/A',
+        items: inv.items || [],
+        discount: inv.discountVal || 0,
+        totalPayable: inv.totalPayable || 0,
+        warranty: '14 Days Replacement & 3 Years Service Warranty'
+      }));
+
+      setInvoices(formattedInvoices);
+    } catch (err) {
+      console.error('Error fetching invoice history:', err);
+      setErrorMsg('Failed to load invoices from database.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Delete Invoice using SweetAlert2
+  const handleDeleteInvoice = async (invoiceId) => {
+    const swalResult = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#374151',
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+      background: '#111827',
+      color: '#f3f4f6'
+    });
+
+    if (!swalResult.isConfirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/invoices/${invoiceId}`, {
+        method: 'DELETE',
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete invoice');
+      }
+
+      // Update state to remove the deleted invoice from UI
+      setInvoices(prev => prev.filter(inv => inv.id !== invoiceId && inv.mongoId !== invoiceId));
+      
+      // Close modal if the deleted invoice was currently open
+      if (selectedInvoice && (selectedInvoice.id === invoiceId || selectedInvoice.mongoId === invoiceId)) {
+        setSelectedInvoice(null);
+      }
+
+      Swal.fire({
+        title: 'Deleted!',
+        text: 'Invoice successfully deleted.',
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false,
+        background: '#111827',
+        color: '#f3f4f6'
+      });
+    } catch (err) {
+      console.error('Error deleting invoice:', err);
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to delete invoice.',
+        icon: 'error',
+        background: '#111827',
+        color: '#f3f4f6'
+      });
+    }
+  };
 
   const filteredInvoices = invoices.filter(inv => 
     inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -53,11 +123,10 @@ export default function InvoiceHistoryScreen() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       
-      {/* ----- HIDDEN PRINT TEMPLATE (Exact POS Screen Style) ----- */}
+      {/* ----- HIDDEN PRINT TEMPLATE ----- */}
       {selectedInvoice && (
         <div className="hidden print:flex flex-col justify-between bg-white text-black p-14 w-[210mm] h-[270mm] mx-auto font-sans box-border relative overflow-hidden">
           <div>
-            {/* Invoice Header */}
             <div className="flex justify-between items-start border-b-2 border-gray-800 pt-10 pb-3 mb-3">
               <div>
                 <h1 className="text-2xl font-black tracking-wider text-blue-600">IT ZONE</h1>
@@ -71,7 +140,6 @@ export default function InvoiceHistoryScreen() {
               </div>
             </div>
 
-            {/* Seller & Bill To Section */}
             <div className="grid grid-cols-2 gap-4 mb-3 bg-gray-50 p-2.5 rounded border border-gray-200">
               <div>
                 <h3 className="text-[14px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">Seller</h3>
@@ -87,7 +155,6 @@ export default function InvoiceHistoryScreen() {
               </div>
             </div>
 
-            {/* Items Table */}
             <table className="w-full mb-3 border-collapse">
               <thead>
                 <tr className="bg-black text-white text-[10px] uppercase">
@@ -109,7 +176,6 @@ export default function InvoiceHistoryScreen() {
               </tbody>
             </table>
 
-            {/* Summary Calculations */}
             <div className="flex justify-end mb-4">
               <div className="w-56 space-y-1 text-xs border-t border-gray-300 pt-2">
                 <div className="flex justify-between text-gray-600">
@@ -129,7 +195,6 @@ export default function InvoiceHistoryScreen() {
               </div>
             </div>
 
-            {/* Warranty & Terms Section */}
             <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50 text-[12px] space-y-1 text-gray-700 mb-4 mt-10">
               <p className="font-bold text-black uppercase tracking-wide border-b border-gray-200 pb-1 mb-1">Warranty & Replacement Terms:</p>
               <ul className="list-disc pl-4 space-y-0.5">
@@ -146,10 +211,9 @@ export default function InvoiceHistoryScreen() {
         </div>
       )}
 
-      {/* ----- NORMAL WEB UI SCREEN (Hidden during print) ----- */}
+      {/* ----- NORMAL WEB UI SCREEN ----- */}
       <div className="print:hidden space-y-6">
         
-        {/* Top Header Banner */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl">
           <div>
             <span className="text-xs uppercase tracking-widest px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full font-semibold">
@@ -158,7 +222,6 @@ export default function InvoiceHistoryScreen() {
             <h1 className="text-2xl font-extrabold text-white mt-2">Invoice History & Tracking</h1>
           </div>
 
-          {/* Search Bar */}
           <div className="relative w-full md:w-80">
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
               <Search size={16} />
@@ -173,7 +236,12 @@ export default function InvoiceHistoryScreen() {
           </div>
         </div>
 
-        {/* Invoice List Table */}
+        {errorMsg && (
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
+            {errorMsg}
+          </div>
+        )}
+
         <div className="bg-[#111827] border border-gray-800 rounded-2xl shadow-xl overflow-hidden">
           <div className="p-6 border-b border-gray-800">
             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
@@ -190,11 +258,17 @@ export default function InvoiceHistoryScreen() {
                   <th className="py-3 px-4">Customer Info</th>
                   <th className="py-3 px-4">Items</th>
                   <th className="py-3 px-4 text-right">Total Payable</th>
-                  <th className="py-3 px-4 text-center">Action</th>
+                  <th className="py-3 px-4 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800/60 text-gray-300">
-                {filteredInvoices.length > 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-8 text-gray-400 text-sm">
+                      Loading invoices from database...
+                    </td>
+                  </tr>
+                ) : filteredInvoices.length > 0 ? (
                   filteredInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-gray-900/40 transition-all">
                       <td className="py-3.5 px-4 font-bold text-blue-400">{inv.id}</td>
@@ -211,12 +285,18 @@ export default function InvoiceHistoryScreen() {
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right font-bold text-green-400">৳ {inv.totalPayable}</td>
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3.5 px-4 text-center space-x-2">
                         <button
                           onClick={() => setSelectedInvoice(inv)}
-                          className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                          className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <FileText size={14} /> View / Verify
+                          <FileText size={14} /> View
+                        </button>
+                        <button
+                          onClick={() => handleDeleteInvoice(inv.mongoId)}
+                          className="px-3 py-1.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 size={14} /> Delete
                         </button>
                       </td>
                     </tr>
@@ -224,7 +304,7 @@ export default function InvoiceHistoryScreen() {
                 ) : (
                   <tr>
                     <td colSpan="6" className="text-center py-8 text-gray-500 text-sm">
-                      Kono matching invoice pawa jayni!
+                      No matching invoices found!
                     </td>
                   </tr>
                 )}
@@ -313,19 +393,27 @@ export default function InvoiceHistoryScreen() {
               </div>
             </div>
 
-            <div className="p-4 border-t border-gray-800 bg-gray-900/50 flex items-center justify-end gap-3">
+            <div className="p-4 border-t border-gray-800 bg-gray-900/50 flex items-center justify-between">
               <button
-                onClick={() => setSelectedInvoice(null)}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+                onClick={() => handleDeleteInvoice(selectedInvoice.mongoId)}
+                className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-1.5 cursor-pointer"
               >
-                Close
+                <Trash2 size={16} /> Delete Invoice
               </button>
-              <button
-                onClick={handlePrintReceipt}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/30 transition-all inline-flex items-center gap-2 cursor-pointer"
-              >
-                <Printer size={16} /> Print Receipt
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSelectedInvoice(null)}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm font-semibold transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={handlePrintReceipt}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/30 transition-all inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <Printer size={16} /> Print Receipt
+                </button>
+              </div>
             </div>
 
           </div>
