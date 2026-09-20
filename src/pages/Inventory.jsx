@@ -11,10 +11,11 @@ export default function Inventory() {
   // Destructure data, setter, loading status, and error state from the custom useApi hook
   const { data: rawProducts, setData: setProducts, loading, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/products');
 
-// Safely extract the array whether the API returns a direct array or a wrapped object { data: [...] }
-const products = Array.isArray(rawProducts) 
-  ? rawProducts 
-  : (rawProducts?.data && Array.isArray(rawProducts.data) ? rawProducts.data : []);
+  // Safely extract the array whether the API returns a direct array or a wrapped object { data: [...] }
+  const products = Array.isArray(rawProducts) 
+    ? rawProducts 
+    : (rawProducts?.data && Array.isArray(rawProducts.data) ? rawProducts.data : []);
+    
   const [searchTerm, setSearchTerm] = useState('');
   const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -68,6 +69,15 @@ const products = Array.isArray(rawProducts)
         setIsModalOpen(false);
         setNewProduct({ name: '', category: 'Laptop', stock: '', buyPrice: '', sellPrice: '' });
         setErrorMsg('');
+        Swal.fire({
+          title: 'Success!',
+          text: 'Stock successfully updated!',
+          icon: 'success',
+          background: '#111827',
+          color: '#fff',
+          timer: 1200,
+          showConfirmButton: false
+        });
       } else {
         setErrorMsg(data.error || 'Failed to save product');
       }
@@ -79,8 +89,31 @@ const products = Array.isArray(rawProducts)
 
   // Stock Quantity Update Handler (PATCH) - handles incremental additions or sales decrement
   const handleUpdateStock = async (item, changeAmount) => {
-    const targetId = item._id || item.id;
+    // Boundary check: prevent item from being null/undefined
+    if (!item) return;
     
+    const targetId = item._id || item.id;
+    if (!targetId) {
+      console.error('Target item ID is missing:', item);
+      return;
+    }
+
+    const currentStock = Number(item.stock || 0);
+    const newQty = currentStock + changeAmount;
+    
+    // Boundary check: Stock cannot drop below zero
+    if (newQty < 0) {
+      Swal.fire({
+        title: 'Invalid Operation',
+        text: 'Stock cannot drop below zero!',
+        icon: 'warning',
+        background: '#111827',
+        color: '#fff',
+        confirmButtonColor: '#2563eb'
+      });
+      return;
+    }
+
     const actionType = changeAmount > 0 ? 'Stock Addition' : 'New Sale';
     const actionDesc = changeAmount > 0 
       ? `Would you like to add 1 unit to "${item.name}"?` 
@@ -101,20 +134,6 @@ const products = Array.isArray(rawProducts)
 
     if (!result.isConfirmed) return;
 
-    const newQty = Number(item.stock) + changeAmount;
-    
-    if (newQty < 0) {
-      Swal.fire({
-        title: 'Invalid Operation',
-        text: 'Stock cannot drop below zero!',
-        icon: 'warning',
-        background: '#111827',
-        color: '#fff',
-        confirmButtonColor: '#2563eb'
-      });
-      return;
-    }
-
     try {
       const res = await fetch(`https://it-zone-invoice-server.vercel.app/products/${targetId}/stock`, {
         method: 'PATCH',
@@ -124,7 +143,18 @@ const products = Array.isArray(rawProducts)
       const data = await res.json();
 
       if (data.success) {
-        setProducts(prev => (prev || []).map(p => (p._id || p.id) === targetId ? { ...p, stock: newQty } : p));
+        // Strict Array Protection during state update
+        setProducts(prev => {
+          const currentList = Array.isArray(prev) 
+            ? prev 
+            : (prev?.data && Array.isArray(prev.data) ? prev.data : []);
+            
+          return currentList.map(p => {
+            const pId = p._id || p.id;
+            return pId === targetId ? { ...p, stock: newQty } : p;
+          });
+        });
+
         Swal.fire({
           title: 'Success!',
           text: changeAmount > 0 ? 'Stock successfully updated!' : 'Sale recorded successfully!',
@@ -134,7 +164,8 @@ const products = Array.isArray(rawProducts)
           timer: 1200,
           showConfirmButton: false
         });
-      } else {
+      } 
+      else {
         Swal.fire({
           title: 'Error!',
           text: data.error || 'Failed to update stock',
@@ -220,6 +251,7 @@ const products = Array.isArray(rawProducts)
           <h1 className="text-2xl font-extrabold text-white mt-2">Inventory Management</h1>
         </div>
         <button
+          type="button"
           onClick={() => setIsModalOpen(true)}
           className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer"
         >
@@ -276,6 +308,7 @@ const products = Array.isArray(rawProducts)
               <Tag size={16} className="text-blue-400" /> Current Stock List
             </h3>
             <button
+              type="button"
               onClick={() => setShowOnlyLowStock(prev => !prev)}
               className={`text-xs px-3 py-1 rounded-xl font-medium transition-all cursor-pointer border ${
                 showOnlyLowStock 
@@ -316,7 +349,6 @@ const products = Array.isArray(rawProducts)
             </thead>
             <tbody className="divide-y divide-gray-800/60 text-gray-300">
               {loading ? (
-                // Display loading spinner while fetching data
                 <tr>
                   <td colSpan="6" className="text-center py-12">
                     <div className="flex flex-col items-center justify-center gap-3">
@@ -346,6 +378,7 @@ const products = Array.isArray(rawProducts)
                     <td className="py-3.5 px-5 text-center">
                       <div className="inline-flex items-center gap-2 bg-gray-900 px-3 py-1 rounded-xl border border-gray-800">
                         <button 
+                          type="button"
                           onClick={() => handleUpdateStock(item, -1)}
                           className="text-red-400 hover:text-red-300 transition-all cursor-pointer"
                           title="Record Sale (-1 Stock)"
@@ -360,6 +393,7 @@ const products = Array.isArray(rawProducts)
                           {item.stock} Units {item.stock <= 3 && '(Low)'}
                         </span>
                         <button 
+                          type="button"
                           onClick={() => handleUpdateStock(item, 1)}
                           className="text-emerald-400 hover:text-emerald-300 transition-all cursor-pointer"
                           title="Add Stock (+1 Stock)"
@@ -372,6 +406,7 @@ const products = Array.isArray(rawProducts)
                     <td className="py-3.5 px-5 text-right font-bold text-blue-400">৳ {item.sellPrice}</td>
                     <td className="py-3.5 px-5 text-center space-x-2">
                       <button 
+                        type="button"
                         onClick={() => handleDelete(item._id || item.id)}
                         className="p-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-all cursor-pointer"
                         title="Delete Item"
@@ -404,6 +439,7 @@ const products = Array.isArray(rawProducts)
                 <Plus size={18} className="text-blue-400" /> Add New Inventory Item
               </h3>
               <button 
+                type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-white p-1 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-all cursor-pointer"
               >

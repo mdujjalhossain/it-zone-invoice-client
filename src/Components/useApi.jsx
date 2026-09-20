@@ -11,6 +11,8 @@ export default function useApi(url) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    if (!url) return;
+
     // If data is already cached for this URL, skip the network request
     if (apiCache[url]) {
       setData(apiCache[url]);
@@ -22,12 +24,24 @@ export default function useApi(url) {
     setLoading(true);
 
     fetch(url)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch data');
+        return res.json();
+      })
       .then((result) => {
         if (isMounted) {
+          // Universal Smart Unwrapping:
+          // If result has { success: true, data: ... }
+          let resolvedData = result;
+          if (result && typeof result === 'object' && 'success' in result && 'data' in result) {
+            // If the inner data is an array (like products/invoices), use it directly.
+            // If the inner data is an object (like analytics stats), return result.data or result appropriately.
+            resolvedData = result.data;
+          }
+
           // Store the resolved data into the module-scoped cache
-          apiCache[url] = result;
-          setData(result);
+          apiCache[url] = resolvedData;
+          setData(resolvedData);
           setLoading(false);
         }
       })

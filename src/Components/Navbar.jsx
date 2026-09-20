@@ -8,9 +8,9 @@ export default function Navbar() {
 
   const navLinks = [
     { name: 'Home', path: '/' },
-    { name: 'POS / Billing', path: '/pos' },
+    { name: 'POS / Billing', path: '/billing' },
     { name: 'Inventory', path: '/inventory' },
-    { name: 'Service Tracking', path: '/service' },
+    { name: 'Service Tracking', path: '/services' },
     { name: 'Invoice History', path: '/invoices' },
   ];
 

@@ -171,7 +171,7 @@ export default function POSScreen() {
         throw new Error(data.error || 'Failed to process invoice and update inventory');
       }
 
-      console.log('Invoice processed & inventory decremented:', data);
+      // console.log('Invoice processed & inventory decremented:', data);
       
       // Refresh inventory products from backend so stock updates dynamically without page reload
       await fetchProducts();

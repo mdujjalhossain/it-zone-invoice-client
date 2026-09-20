@@ -18,7 +18,7 @@ export const router = createBrowserRouter([
                 Component: Home
             },
             {
-                path: '/pos',
+                path: '/billing',
                 Component: PosScreen,
             },
             {
@@ -30,7 +30,7 @@ export const router = createBrowserRouter([
                 Component: Inventory,
             },
             {
-                path: '/service',
+                path: '/services',
                 Component: ServiceTracking,
             },
 
