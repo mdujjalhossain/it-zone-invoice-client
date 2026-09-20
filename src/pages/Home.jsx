@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import Banner from '../Components/Banner';
 import useApi from '../Components/useApi';
 import { Loader2, AlertCircle } from 'lucide-react';
@@ -5,9 +6,9 @@ import { Loader2, AlertCircle } from 'lucide-react';
 export default function Home() {
   const { data: stats, loading, error } = useApi('https://it-zone-invoice-server.vercel.app/analytics/stats');
 
-  if (typeof document !== 'undefined') {
-    document.title = "IT Zone-Inventory | Home";
-  }
+  useEffect(() => {
+        document.title = "IT Zone-Inventory | Home";
+      }, []);
 
   return (
     <div className="space-y-6">
@@ -28,19 +29,19 @@ export default function Home() {
           <>
             <div className="bg-[#111827] border border-gray-800 p-6 rounded-xl shadow-xl space-y-2">
               <p className="text-xs text-gray-400 font-semibold uppercase">Today's Sales</p>
-              <h3 className="text-2xl font-bold text-blue-400">৳ {(stats?.todaysSales || 0).toLocaleString()}</h3>
+              <h3 className="text-2xl font-bold text-blue-400">৳ {(stats?.data?.todaysSales || 0).toLocaleString()}</h3>
               <p className="text-xs text-gray-500">Real-time database calculation</p>
             </div>
-            
+
             <div className="bg-[#111827] border border-gray-800 p-6 rounded-xl shadow-xl space-y-2">
               <p className="text-xs text-gray-400 font-semibold uppercase">Active Services</p>
-              <h3 className="text-2xl font-bold text-blue-400">{stats?.activeServicesCount || 0} Devices</h3>
-              <p className="text-xs text-gray-500">{stats?.readyServicesCount || 0} ready for delivery</p>
+              <h3 className="text-2xl font-bold text-blue-400">{stats?.data?.activeServicesCount || 0} Devices</h3>
+              <p className="text-xs text-gray-500">{stats?.data?.readyServicesCount || 0} ready for delivery</p>
             </div>
 
             <div className="bg-[#111827] border border-gray-800 p-6 rounded-xl shadow-xl space-y-2">
               <p className="text-xs text-gray-400 font-semibold uppercase">Total Products</p>
-              <h3 className="text-2xl font-bold text-blue-400">{stats?.totalProductsCount || 0} Items</h3>
+              <h3 className="text-2xl font-bold text-blue-400">{stats?.data?.totalProductsCount || 0} Items</h3>
               <p className="text-xs text-gray-500">Live inventory count</p>
             </div>
           </>

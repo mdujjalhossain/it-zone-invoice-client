@@ -152,7 +152,7 @@ const products = Array.isArray(rawProducts)
   const handleDelete = async (id) => {
     const result = await Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this!",
+      text: "You want to remove the stock item?",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#2563eb',

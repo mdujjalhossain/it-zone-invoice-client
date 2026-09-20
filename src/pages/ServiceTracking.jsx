@@ -210,7 +210,7 @@ export default function ServiceTracking() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">Today's Total Earn</p>
+            <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">Today's Total Earn From Service</p>
             <h3 className="text-2xl font-extrabold text-green-400 mt-1">৳ {todaysTotalEarn.toLocaleString()}</h3>
           </div>
           <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400">
@@ -220,7 +220,7 @@ export default function ServiceTracking() {
 
         <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">This Month's Total Earn</p>
+            <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">This Month's Total Earn From Service</p>
             <h3 className="text-2xl font-extrabold text-blue-400 mt-1">৳ {monthlyTotalEarn.toLocaleString()}</h3>
           </div>
           <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400">
@@ -230,7 +230,7 @@ export default function ServiceTracking() {
 
         <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-between">
           <div>
-            <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">This Year's Total Earn</p>
+            <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">This Year's Total Earn From Service</p>
             <h3 className="text-2xl font-extrabold text-purple-400 mt-1">৳ {yearlyTotalEarn.toLocaleString()}</h3>
           </div>
           <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-400">

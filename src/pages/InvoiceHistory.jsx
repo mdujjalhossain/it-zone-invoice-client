@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2, AlertCircle, DollarSign, BarChart3 } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
 
-export default function InvoiceHistoryScreen() {
+export default function InvoiceHistory() {
 
   useEffect(() => {
       document.title = "IT Zone-Inventory | Invoice-History";
@@ -18,11 +18,12 @@ export default function InvoiceHistoryScreen() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [viewMode, setViewMode] = useState('all'); // 'all', 'today', 'monthly', 'yearly'
 
   const formattedInvoices = invoicesList.map(inv => ({
     id: inv.invoiceNo || inv._id,
     mongoId: inv._id,
-    date: inv.currentDate || 'N/A',
+    date: inv.currentDate || 'N/A', // Expecting YYYY-MM-DD or standard date format
     customerName: inv.customer?.name || 'Unknown',
     phone: inv.customer?.phone || '',
     address: inv.customer?.address || 'N/A',
@@ -32,10 +33,45 @@ export default function InvoiceHistoryScreen() {
     warranty: '14 Days Replacement & 3 Years Service Warranty'
   }));
 
+  // Date constants for filtering and calculations
+  const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const currentMonthStr = todayStr.slice(0, 7); // YYYY-MM
+  const currentYearStr = todayStr.slice(0, 4); // YYYY
+
+  // Calculations for Today's, Monthly, and Yearly Earnings from Invoices
+  const todaysTotalEarn = formattedInvoices
+    .filter(inv => inv.date === todayStr)
+    .reduce((sum, inv) => sum + (Number(inv.totalPayable) || 0), 0);
+
+  const monthlyTotalEarn = formattedInvoices
+    .filter(inv => inv.date && inv.date.startsWith(currentMonthStr))
+    .reduce((sum, inv) => sum + (Number(inv.totalPayable) || 0), 0);
+
+  const yearlyTotalEarn = formattedInvoices
+    .filter(inv => inv.date && inv.date.startsWith(currentYearStr))
+    .reduce((sum, inv) => sum + (Number(inv.totalPayable) || 0), 0);
+
+  // Filter invoices based on search term and view mode
+  const filteredInvoices = formattedInvoices.filter(inv => {
+    const matchesSearch = 
+      inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      inv.phone.includes(searchTerm) ||
+      inv.customerName.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (viewMode === 'today') {
+      return matchesSearch && inv.date === todayStr;
+    } else if (viewMode === 'monthly') {
+      return matchesSearch && inv.date && inv.date.startsWith(currentMonthStr);
+    } else if (viewMode === 'yearly') {
+      return matchesSearch && inv.date && inv.date.startsWith(currentYearStr);
+    }
+    return matchesSearch;
+  });
+
   const handleDeleteInvoice = async (invoiceId) => {
     const swalResult = await Swal.fire({
       title: 'Are you sure?',
-      text: "You won't be able to revert this!",
+      text: "You are going to delete this invoice!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -89,12 +125,6 @@ export default function InvoiceHistoryScreen() {
       });
     }
   };
-
-  const filteredInvoices = formattedInvoices.filter(inv => 
-    inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inv.phone.includes(searchTerm) ||
-    inv.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const handlePrintReceipt = () => {
     window.print();
@@ -201,19 +231,6 @@ export default function InvoiceHistoryScreen() {
             </span>
             <h1 className="text-2xl font-extrabold text-white mt-2">Invoice History & Tracking</h1>
           </div>
-
-          <div className="relative w-full md:w-80">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
-              <Search size={16} />
-            </span>
-            <input
-              type="text"
-              placeholder="Search by ID or Phone..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-            />
-          </div>
         </div>
 
         {/* API Error Box */}
@@ -224,11 +241,94 @@ export default function InvoiceHistoryScreen() {
           </div>
         )}
 
-        <div className="bg-[#111827] border border-gray-800 rounded-2xl shadow-xl overflow-hidden">
-          <div className="p-6 border-b border-gray-800">
+        {/* Dynamic Summary Cards (Today, Monthly, Yearly) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">Today's Total Sales</p>
+              <h3 className="text-2xl font-extrabold text-green-400 mt-1">৳ {todaysTotalEarn.toLocaleString()}</h3>
+            </div>
+            <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400">
+              <DollarSign size={24} />
+            </div>
+          </div>
+
+          <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">This Month's Total Sales</p>
+              <h3 className="text-2xl font-extrabold text-blue-400 mt-1">৳ {monthlyTotalEarn.toLocaleString()}</h3>
+            </div>
+            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-400">
+              <Calendar size={24} />
+            </div>
+          </div>
+
+          <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">This Year's Total Sales</p>
+              <h3 className="text-2xl font-extrabold text-purple-400 mt-1">৳ {yearlyTotalEarn.toLocaleString()}</h3>
+            </div>
+            <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl text-purple-400">
+              <BarChart3 size={24} />
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Buttons */}
+        <div className="flex flex-wrap items-center gap-2 bg-[#111827] border border-gray-800 p-2 rounded-2xl w-fit shadow-md">
+          <button
+            onClick={() => setViewMode('all')}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              viewMode === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            All Invoices
+          </button>
+          <button
+            onClick={() => setViewMode('today')}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              viewMode === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            Today's History
+          </button>
+          <button
+            onClick={() => setViewMode('monthly')}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              viewMode === 'monthly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            Monthly History
+          </button>
+          <button
+            onClick={() => setViewMode('yearly')}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+              viewMode === 'yearly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            Yearly History
+          </button>
+        </div>
+
+        <div className="bg-[#111827] border border-gray-800 rounded-2xl shadow-xl overflow-hidden space-y-4">
+          <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-              <FileText size={16} className="text-blue-400" /> All Invoices ({filteredInvoices.length})
+              <FileText size={16} className="text-blue-400" /> 
+              {viewMode === 'today' ? "Today's Invoices" : viewMode === 'monthly' ? "Monthly Invoices" : viewMode === 'yearly' ? "Yearly Invoices" : "All Invoices"} ({filteredInvoices.length})
             </h3>
+
+            <div className="relative w-full sm:w-80">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
+                <Search size={16} />
+              </span>
+              <input
+                type="text"
+                placeholder="Search by ID or Phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500 transition-all"
+              />
+            </div>
           </div>
 
           <div className="overflow-x-auto">
