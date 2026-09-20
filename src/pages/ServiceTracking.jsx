@@ -11,7 +11,11 @@ export default function ServiceTracking() {
   // Destructure the loading state alongside data, setter, and error from the custom useApi hook
   const { data: rawTickets, setData: setTickets, loading, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/services');
   
-  const tickets = rawTickets || [];
+  // Safely extract the array whether the API returns a direct array or a wrapped object { data: [...] }
+  const ticketsList = Array.isArray(rawTickets) 
+    ? rawTickets 
+    : (rawTickets?.data && Array.isArray(rawTickets.data) ? rawTickets.data : []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'today', 'monthly', 'yearly'
@@ -34,27 +38,32 @@ export default function ServiceTracking() {
   const currentYearStr = todayStr.slice(0, 4); // YYYY
 
   // Today's Total Earn Calculation
-  const todaysTotalEarn = tickets
+  const todaysTotalEarn = ticketsList
     .filter(t => t.date === todayStr && t.status === 'Delivered')
     .reduce((sum, t) => sum + (Number(t.cost) || 0), 0);
 
   // Monthly Total Earn Calculation
-  const monthlyTotalEarn = tickets
+  const monthlyTotalEarn = ticketsList
     .filter(t => t.date && t.date.startsWith(currentMonthStr) && t.status === 'Delivered')
     .reduce((sum, t) => sum + (Number(t.cost) || 0), 0);
 
   // Yearly Total Earn Calculation
-  const yearlyTotalEarn = tickets
+  const yearlyTotalEarn = ticketsList
     .filter(t => t.date && t.date.startsWith(currentYearStr) && t.status === 'Delivered')
     .reduce((sum, t) => sum + (Number(t.cost) || 0), 0);
 
   // Filtered tickets based on search and view mode
-  const filteredTickets = tickets.filter(t => {
+  const filteredTickets = ticketsList.filter(t => {
+    const ticketId = t.id || t._id || '';
+    const customerName = t.customerName || '';
+    const phone = t.phone || '';
+    const deviceModel = t.deviceModel || '';
+
     const matchesSearch = 
-      t.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.phone.includes(searchTerm) ||
-      t.deviceModel.toLowerCase().includes(searchTerm.toLowerCase());
+      ticketId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      phone.includes(searchTerm) ||
+      deviceModel.toLowerCase().includes(searchTerm.toLowerCase());
 
     if (viewMode === 'today') {
       return matchesSearch && t.date === todayStr;
@@ -95,7 +104,10 @@ export default function ServiceTracking() {
       const data = await res.json();
 
       if (data.success) {
-        setTickets(prev => [data.data, ...(prev || [])]);
+        setTickets(prev => {
+          const list = Array.isArray(prev) ? prev : (prev?.data || []);
+          return [data.data, ...list];
+        });
         setIsModalOpen(false);
         setNewTicket({
           customerName: '',
@@ -138,7 +150,10 @@ export default function ServiceTracking() {
       const data = await res.json();
 
       if (data.success) {
-        setTickets(prev => (prev || []).map(t => (t._id || t.id) === targetId ? { ...t, status: newStatus } : t));
+        setTickets(prev => {
+          const list = Array.isArray(prev) ? prev : (prev?.data || []);
+          return list.map(t => (t._id || t.id) === targetId ? { ...t, status: newStatus } : t);
+        });
       } else {
         alert(data.error || 'Failed to update status');
       }

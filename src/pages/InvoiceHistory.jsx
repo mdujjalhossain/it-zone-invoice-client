@@ -1,19 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
 
 export default function InvoiceHistoryScreen() {
-  if (typeof document !== 'undefined') {
-    document.title = "IT Zone-Inventory | Invoice-History";
-  }
+
+  useEffect(() => {
+      document.title = "IT Zone-Inventory | Invoice-History";
+    }, []);
 
   const { data: rawData, setData: setInvoices, loading, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/invoices');
   
+  // Safely extract the array whether the API returns a direct array or a wrapped object { data: [...] }
+  const invoicesList = Array.isArray(rawData) 
+    ? rawData 
+    : (rawData?.data && Array.isArray(rawData.data) ? rawData.data : []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
 
-  const formattedInvoices = (rawData || []).map(inv => ({
+  const formattedInvoices = invoicesList.map(inv => ({
     id: inv.invoiceNo || inv._id,
     mongoId: inv._id,
     date: inv.currentDate || 'N/A',
@@ -54,7 +60,10 @@ export default function InvoiceHistoryScreen() {
         throw new Error(result.error || 'Failed to delete invoice');
       }
 
-      setInvoices(prev => (prev || []).filter(inv => inv._id !== invoiceId && inv.invoiceNo !== invoiceId));
+      setInvoices(prev => {
+        const list = Array.isArray(prev) ? prev : (prev?.data || []);
+        return list.filter(inv => inv._id !== invoiceId && inv.invoiceNo !== invoiceId);
+      });
       
       if (selectedInvoice && (selectedInvoice.id === invoiceId || selectedInvoice.mongoId === invoiceId)) {
         setSelectedInvoice(null);

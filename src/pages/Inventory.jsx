@@ -10,8 +10,11 @@ export default function Inventory() {
 
   // Destructure data, setter, loading status, and error state from the custom useApi hook
   const { data: rawProducts, setData: setProducts, loading, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/products');
-  
-  const products = rawProducts || [];
+
+// Safely extract the array whether the API returns a direct array or a wrapped object { data: [...] }
+const products = Array.isArray(rawProducts) 
+  ? rawProducts 
+  : (rawProducts?.data && Array.isArray(rawProducts.data) ? rawProducts.data : []);
   const [searchTerm, setSearchTerm] = useState('');
   const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
