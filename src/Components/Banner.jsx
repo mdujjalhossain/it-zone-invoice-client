@@ -17,7 +17,7 @@ export default function Banner() {
       
       <div className="pt-4 flex flex-wrap gap-4">
         <Link
-          to="/pos"
+          to="/billing"
           className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/30 flex items-center gap-2"
         >
           <ShoppingCart size={16} /> Open POS / Billing Screen
