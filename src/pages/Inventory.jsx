@@ -20,6 +20,10 @@ export default function Inventory() {
   const [showOnlyLowStock, setShowOnlyLowStock] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
+  // --- Pagination States ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // Limits items displayed per page
+
   const [newProduct, setNewProduct] = useState({
     name: '',
     category: 'Laptop',
@@ -39,6 +43,29 @@ export default function Inventory() {
     }
     return matchesSearch;
   });
+
+  // --- Pagination Boundary Calculations ---
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
+
+  // Handle boundary condition: if current page exceeds total pages after filtering/deletion, reset it safely
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages > 0 ? totalPages : 1);
+    }
+  }, [filteredProducts.length, totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to page 1 on search
+  };
+
+  const handleLowStockFilterToggle = () => {
+    setShowOnlyLowStock(prev => !prev);
+    setCurrentPage(1); // Reset to page 1 on filter toggle
+  };
 
   // Add Product Handler (POST)
   const handleAddProduct = async (e) => {
@@ -69,6 +96,7 @@ export default function Inventory() {
         setIsModalOpen(false);
         setNewProduct({ name: '', category: 'Laptop', stock: '', buyPrice: '', sellPrice: '' });
         setErrorMsg('');
+        setCurrentPage(1); // Reset to page 1 to see newly added item
         Swal.fire({
           title: 'Success!',
           text: 'Stock successfully updated!',
@@ -305,11 +333,11 @@ export default function Inventory() {
         <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-              <Tag size={16} className="text-blue-400" /> Current Stock List
+              <Tag size={16} className="text-blue-400" /> Current Stock List ({filteredProducts.length})
             </h3>
             <button
               type="button"
-              onClick={() => setShowOnlyLowStock(prev => !prev)}
+              onClick={handleLowStockFilterToggle}
               className={`text-xs px-3 py-1 rounded-xl font-medium transition-all cursor-pointer border ${
                 showOnlyLowStock 
                   ? 'bg-red-500/20 border-red-500 text-red-400' 
@@ -328,7 +356,7 @@ export default function Inventory() {
               type="text"
               placeholder="Search product or category..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
               className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -357,8 +385,8 @@ export default function Inventory() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredProducts.length > 0 ? (
-                filteredProducts.map((item) => (
+              ) : currentProducts.length > 0 ? (
+                currentProducts.map((item) => (
                   <tr 
                     key={item._id || item.id} 
                     className={`transition-all ${
@@ -426,6 +454,39 @@ export default function Inventory() {
             </tbody>
           </table>
         </div>
+
+        {/* --- Pagination Footer Controls --- */}
+        {!loading && filteredProducts.length > 0 && (
+          <div className="p-4 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+            <div>
+              Showing <span className="text-white font-semibold">{startIndex + 1}</span> to <span className="text-white font-semibold">{Math.min(startIndex + itemsPerPage, filteredProducts.length)}</span> of <span className="text-white font-semibold">{filteredProducts.length}</span> products
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-gray-200 border border-gray-800 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Previous
+              </button>
+
+              <span className="text-gray-300 font-semibold px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-gray-200 border border-gray-800 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
 

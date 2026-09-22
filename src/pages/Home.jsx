@@ -16,7 +16,7 @@ export default function Home() {
       <Banner />
 
       {/* Grid changed to 4 columns for balanced stats display */}
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="max-w-7xl mb-10 mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {loading ? (
           <div className="col-span-full flex justify-center items-center gap-2 py-12 text-gray-400 text-sm bg-[#111827] border border-gray-800 rounded-xl shadow-xl">
             <Loader2 className="animate-spin text-blue-500" size={20} />
