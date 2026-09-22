@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2, AlertCircle, DollarSign, BarChart3 } from 'lucide-react';
+import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2, AlertCircle, DollarSign, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
 
@@ -19,6 +19,10 @@ export default function InvoiceHistory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'today', 'monthly', 'yearly'
+
+  // --- Pagination States ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10; // item shows limit in each page
 
   const formattedInvoices = invoicesList.map(inv => ({
     id: inv.invoiceNo || inv._id,
@@ -67,6 +71,29 @@ export default function InvoiceHistory() {
     }
     return matchesSearch;
   });
+
+  // --- Pagination Boundary Calculations ---
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage) || 1;
+
+  // Handle boundary condition: if current page exceeds total pages after filtering/deletion, reset it safely
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages > 0 ? totalPages : 1);
+    }
+  }, [filteredInvoices.length, totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentInvoices = filteredInvoices.slice(startIndex, startIndex + itemsPerPage);
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to page 1 on search
+  };
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    setCurrentPage(1); // Reset to page 1 on view change
+  };
 
   const handleDeleteInvoice = async (invoiceId) => {
     const swalResult = await Swal.fire({
@@ -277,7 +304,7 @@ export default function InvoiceHistory() {
         {/* Filter Buttons */}
         <div className="flex flex-wrap items-center gap-2 bg-[#111827] border border-gray-800 p-2 rounded-2xl w-fit shadow-md">
           <button
-            onClick={() => setViewMode('all')}
+            onClick={() => handleViewModeChange('all')}
             className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               viewMode === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
             }`}
@@ -285,7 +312,7 @@ export default function InvoiceHistory() {
             All Invoices
           </button>
           <button
-            onClick={() => setViewMode('today')}
+            onClick={() => handleViewModeChange('today')}
             className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               viewMode === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
             }`}
@@ -293,7 +320,7 @@ export default function InvoiceHistory() {
             Today's History
           </button>
           <button
-            onClick={() => setViewMode('monthly')}
+            onClick={() => handleViewModeChange('monthly')}
             className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               viewMode === 'monthly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
             }`}
@@ -301,7 +328,7 @@ export default function InvoiceHistory() {
             Monthly History
           </button>
           <button
-            onClick={() => setViewMode('yearly')}
+            onClick={() => handleViewModeChange('yearly')}
             className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               viewMode === 'yearly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
             }`}
@@ -325,7 +352,7 @@ export default function InvoiceHistory() {
                 type="text"
                 placeholder="Search by ID or Phone..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
                 className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500 transition-all"
               />
             </div>
@@ -353,8 +380,8 @@ export default function InvoiceHistory() {
                       </div>
                     </td>
                   </tr>
-                ) : filteredInvoices.length > 0 ? (
-                  filteredInvoices.map((inv) => (
+                ) : currentInvoices.length > 0 ? (
+                  currentInvoices.map((inv) => (
                     <tr key={inv.id} className="hover:bg-gray-900/40 transition-all">
                       <td className="py-3.5 px-4 font-bold text-blue-400">{inv.id}</td>
                       <td className="py-3.5 px-4 text-gray-400 text-xs flex items-center gap-1.5 mt-1">
@@ -396,6 +423,38 @@ export default function InvoiceHistory() {
               </tbody>
             </table>
           </div>
+
+          {/* --- Pagination Footer Controls --- */}
+          {!loading && filteredInvoices.length > 0 && (
+            <div className="p-4 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+              <div>
+                Showing <span className="text-white font-semibold">{startIndex + 1}</span> to <span className="text-white font-semibold">{Math.min(startIndex + itemsPerPage, filteredInvoices.length)}</span> of <span className="text-white font-semibold">{filteredInvoices.length}</span> invoices
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 bg-gray-900 border border-gray-800 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer text-gray-300"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                <div className="px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-lg text-white font-semibold">
+                  Page {currentPage} of {totalPages}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 bg-gray-900 border border-gray-800 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer text-gray-300"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
 
       </div>
