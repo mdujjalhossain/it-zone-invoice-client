@@ -437,10 +437,10 @@ export default function InvoiceHistory() {
                   disabled={currentPage === 1}
                   className="p-2 bg-gray-900 border border-gray-800 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer text-gray-300"
                 >
-                  <ChevronLeft size={16} />
+                  Previous
                 </button>
 
-                <div className="px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-lg text-white font-semibold">
+                <div className="px-3 py-1.5 bg-gray-900 border border-gray-800 rounded-lg text-gray-300 font-semibold">
                   Page {currentPage} of {totalPages}
                 </div>
 
@@ -449,7 +449,7 @@ export default function InvoiceHistory() {
                   disabled={currentPage === totalPages}
                   className="p-2 bg-gray-900 border border-gray-800 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer text-gray-300"
                 >
-                  <ChevronRight size={16} />
+                  Next
                 </button>
               </div>
             </div>

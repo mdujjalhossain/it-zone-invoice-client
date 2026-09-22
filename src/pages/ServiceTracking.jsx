@@ -20,6 +20,10 @@ export default function ServiceTracking() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'today', 'monthly', 'yearly'
   
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;  // items showing limit in each page
+  
   const [newTicket, setNewTicket] = useState({
     customerName: '',
     phone: '',
@@ -74,6 +78,16 @@ export default function ServiceTracking() {
     }
     return matchesSearch;
   });
+
+  // Reset to page 1 on search or viewMode change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, viewMode]);
+
+  // Pagination Slice Calculations
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentTickets = filteredTickets.slice(startIndex, startIndex + itemsPerPage);
+  const totalPages = Math.ceil(filteredTickets.length / itemsPerPage) || 1;
 
   // Add Ticket (POST)
   const handleAddTicket = async (e) => {
@@ -321,8 +335,8 @@ export default function ServiceTracking() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredTickets.length > 0 ? (
-                filteredTickets.map((t) => {
+              ) : currentTickets.length > 0 ? (
+                currentTickets.map((t) => {
                   const isLocked = t.status === 'Delivered' || t.status === 'Cancelled';
 
                   return (
@@ -380,6 +394,37 @@ export default function ServiceTracking() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {!loading && filteredTickets.length > 0 && (
+          <div className="p-4 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+            <div>
+              Showing <span className="text-white font-semibold">{startIndex + 1}</span> to <span className="text-white font-semibold">{Math.min(startIndex + itemsPerPage, filteredTickets.length)}</span> of <span className="text-white font-semibold">{filteredTickets.length}</span> services
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-gray-200 border border-gray-800 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Previous
+              </button>
+              
+              <span className="text-gray-300 font-semibold px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-gray-200 border border-gray-800 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
 
