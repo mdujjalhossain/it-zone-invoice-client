@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Printer, ShoppingCart, User, MapPin, Phone, Calendar, Hash, Loader2, Wrench, Briefcase } from 'lucide-react';
+import { Plus, Trash2, Printer, ShoppingCart, User, MapPin, Phone, Calendar, Hash, Loader2, Wrench, Laptop } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function POSScreen() {
   const [invoiceNo, setInvoiceNo] = useState('');
   const [currentDate, setCurrentDate] = useState('');
 
-  // Added sales type state to switch between Product Sale and Service Sale
-  const [salesType, setSalesType] = useState('product'); // 'product' | 'service'
+  // Sales type state: 'product' or 'service'
+  const [salesType, setSalesType] = useState('product');
 
   // Manual state for products so we can refetch/update easily after invoice submission
   const [productList, setProductList] = useState([]);
@@ -41,8 +41,9 @@ export default function POSScreen() {
     phone: ''
   });
 
+  // Updated items state to include deviceModel for service sales
   const [items, setItems] = useState([
-    { id: 1, productId: '', productName: '', quantity: 1, price: 0, stock: 0 }
+    { id: 1, productId: '', productName: '', deviceModel: '', quantity: 1, price: 0, stock: 0 }
   ]);
 
   const [discount, setDiscount] = useState(0);
@@ -58,7 +59,7 @@ export default function POSScreen() {
   }, [salesType]);
 
   const handleAddItem = () => {
-    setItems([...items, { id: Date.now(), productId: '', productName: '', quantity: 1, price: 0, stock: 0 }]);
+    setItems([...items, { id: Date.now(), productId: '', productName: '', deviceModel: '', quantity: 1, price: 0, stock: 0 }]);
   };
 
   const handleRemoveItem = (id) => {
@@ -73,7 +74,7 @@ export default function POSScreen() {
     const updatedItems = items.map(item => {
       if (item.id === id) {
         if (!selectedProd) {
-          return { id, productId: '', productName: '', quantity: 1, price: 0, stock: 0 };
+          return { id, productId: '', productName: '', deviceModel: '', quantity: 1, price: 0, stock: 0 };
         }
         return {
           ...item,
@@ -135,8 +136,8 @@ export default function POSScreen() {
       return;
     }
 
-    if (salesType === 'service' && items.some(item => !item.productName || item.price <= 0)) {
-      setErrorMsg("Please ensure all service items have a description and valid price!");
+    if (salesType === 'service' && items.some(item => !item.productName || !item.deviceModel || item.price <= 0)) {
+      setErrorMsg("Please ensure all service items have a service description, device model, and valid price!");
       return;
     }
 
@@ -156,10 +157,11 @@ export default function POSScreen() {
       invoiceNo,
       currentDate,
       customer,
-      salesType, // sent to differentiate product vs service billing
+      salesType,
       items: items.map(i => ({
         productId: i.productId || null,
         productName: i.productName,
+        deviceModel: i.deviceModel || '', // Saved device model for service items
         quantity: Number(i.quantity),
         price: Number(i.price)
       })),
@@ -169,7 +171,6 @@ export default function POSScreen() {
     };
 
     try {
-      // Endpoint routing based on sales type
       const endpoint = salesType === 'service' 
         ? 'https://it-zone-invoice-server.vercel.app/services-invoice' 
         : 'https://it-zone-invoice-server.vercel.app/invoices-with-stock';
@@ -193,11 +194,13 @@ export default function POSScreen() {
 
       setIsSubmitting(false);
       window.print();
-    } catch (err) {
+    } 
+    catch (err) {
       console.error('Network or database error:', err);
       setErrorMsg('Failed to sync invoice with database or update records. Print aborted.');
       setIsSubmitting(false);
     }
+    
   };
 
   return (
@@ -239,7 +242,7 @@ export default function POSScreen() {
           <table className="w-full mb-3 border-collapse">
             <thead>
               <tr className="bg-black text-white text-[10px] uppercase">
-                <th className="py-1.5 px-2 text-left">{salesType === 'service' ? 'Service Description' : 'Description / Product'}</th>
+                <th className="py-1.5 px-2 text-left">{salesType === 'service' ? 'Service Description & Device Model' : 'Description / Product'}</th>
                 <th className="py-1.5 px-2 text-center w-16">Qty</th>
                 <th className="py-1.5 px-2 text-right w-24">Unit Price</th>
                 <th className="py-1.5 px-2 text-right w-24">Subtotal</th>
@@ -248,7 +251,12 @@ export default function POSScreen() {
             <tbody className="divide-y divide-gray-200 text-xs">
               {items.map((item, idx) => (
                 <tr key={idx} className="border-b border-gray-200">
-                  <td className="py-1.5 px-2 text-gray-800 font-medium">{item.productName || 'Item'}</td>
+                  <td className="py-1.5 px-2 text-gray-800 font-medium">
+                    {item.productName || 'Item'}
+                    {salesType === 'service' && item.deviceModel && (
+                      <span className="block text-[10px] text-gray-500 font-normal">Device Model: {item.deviceModel}</span>
+                    )}
+                  </td>
                   <td className="py-1.5 px-2 text-center text-gray-600">{item.quantity}</td>
                   <td className="py-1.5 px-2 text-right text-gray-600">৳ {item.price}</td>
                   <td className="py-1.5 px-2 text-right font-semibold text-gray-900">৳ {Number(item.quantity || 0) * Number(item.price || 0)}</td>
@@ -320,7 +328,7 @@ export default function POSScreen() {
               type="button"
               onClick={() => {
                 setSalesType('product');
-                setItems([{ id: 1, productId: '', productName: '', quantity: 1, price: 0, stock: 0 }]);
+                setItems([{ id: 1, productId: '', productName: '', deviceModel: '', quantity: 1, price: 0, stock: 0 }]);
               }}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 salesType === 'product'
@@ -334,7 +342,7 @@ export default function POSScreen() {
               type="button"
               onClick={() => {
                 setSalesType('service');
-                setItems([{ id: 1, productId: '', productName: '', quantity: 1, price: 0, stock: 0 }]);
+                setItems([{ id: 1, productId: '', productName: '', deviceModel: '', quantity: 1, price: 0, stock: 0 }]);
               }}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                 salesType === 'service'
@@ -453,78 +461,105 @@ export default function POSScreen() {
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {items.map((item, index) => (
-                  <div key={item.id} className="flex flex-col md:flex-row items-center gap-3 bg-gray-900/60 p-3 rounded-xl border border-gray-800/80">
-                    <span className="text-xs text-gray-500 font-bold w-6">#{index + 1}</span>
-                    
-                    <div className="flex-1 w-full">
+                  <div key={item.id} className="bg-gray-900/60 p-4 rounded-xl border border-gray-800/80 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400 font-bold">Item #{index + 1}</span>
+                      <button
+                        onClick={() => handleRemoveItem(item.id)}
+                        disabled={items.length === 1}
+                        className={`text-xs flex items-center gap-1 ${items.length === 1 ? 'text-gray-700 cursor-not-allowed' : 'text-red-400 hover:text-red-300 cursor-pointer'}`}
+                      >
+                        <Trash2 size={14} /> Remove
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {salesType === 'product' ? (
-                        <select
-                          value={item.productId}
-                          onChange={(e) => handleProductSelect(item.id, e.target.value)}
-                          className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-                        >
-                          <option value="">-- Select Product from Inventory --</option>
-                          {inventoryLoading ? (
-                            <option disabled>Loading inventory...</option>
-                          ) : (
-                            productList.map(prod => {
-                              const cleanName = prod.productName || prod.name;
-                              return (
-                                <option key={prod._id || prod.id} value={prod._id || prod.id}>
-                                  {cleanName} (Stock: {prod.quantity ?? prod.stock ?? 0})
-                                </option>
-                              );
-                            })
-                          )}
-                        </select>
+                        <div className="md:col-span-2">
+                          <label className="block text-[11px] font-semibold text-gray-400 mb-1">Select Product</label>
+                          <select
+                            value={item.productId}
+                            onChange={(e) => handleProductSelect(item.id, e.target.value)}
+                            className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="">-- Select Product from Inventory --</option>
+                            {inventoryLoading ? (
+                              <option disabled>Loading inventory...</option>
+                            ) : (
+                              productList.map(prod => {
+                                const cleanName = prod.productName || prod.name;
+                                return (
+                                  <option key={prod._id || prod.id} value={prod._id || prod.id}>
+                                    {cleanName} (Stock: {prod.quantity ?? prod.stock ?? 0})
+                                  </option>
+                                );
+                              })
+                            )}
+                          </select>
+                        </div>
                       ) : (
-                        <input
-                          type="text"
-                          placeholder="Enter service/repair details (e.g. Display Issue)"
-                          value={item.productName}
-                          onChange={(e) => handleItemFieldChange(item.id, 'productName', e.target.value)}
-                          className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500"
-                        />
+                        <>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-400 mb-1">Service/Repair Description <span className="text-red-400">*</span></label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Display Replacement, OS Setup"
+                              value={item.productName}
+                              onChange={(e) => handleItemFieldChange(item.id, 'productName', e.target.value)}
+                              className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-400 mb-1">Device Model / Brand <span className="text-red-400">*</span></label>
+                            <div className="relative">
+                              <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center text-gray-500"><Laptop size={14} /></span>
+                              <input
+                                type="text"
+                                placeholder="e.g. HP ProBook 440 G8"
+                                value={item.deviceModel}
+                                onChange={(e) => handleItemFieldChange(item.id, 'deviceModel', e.target.value)}
+                                className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-8 pr-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500"
+                              />
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
 
-                    <div className="w-full md:w-24">
-                      <input
-                        type="number"
-                        min="1"
-                        max={salesType === 'product' ? (item.stock || 9999) : 9999}
-                        placeholder="Qty"
-                        value={item.quantity}
-                        onChange={(e) => handleItemFieldChange(item.id, 'quantity', e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-                      />
-                      {salesType === 'product' && <span className="text-[10px] text-gray-400 block mt-0.5">Available: {item.stock}</span>}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1 border-t border-gray-800/60 items-center">
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">Quantity</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={salesType === 'product' ? (item.stock || 9999) : 9999}
+                          value={item.quantity}
+                          onChange={(e) => handleItemFieldChange(item.id, 'quantity', e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+                        />
+                        {salesType === 'product' && <span className="text-[10px] text-gray-400 block mt-0.5">Stock: {item.stock}</span>}
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">Unit Price (৳)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="0"
+                          value={item.price === 0 ? '' : item.price}
+                          onChange={(e) => handleItemFieldChange(item.id, 'price', e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="col-span-2 sm:col-span-1 text-right">
+                        <span className="block text-[10px] font-semibold text-gray-400 mb-0.5">Subtotal</span>
+                        <span className="text-base font-bold text-blue-400">৳ {Number(item.quantity || 0) * Number(item.price || 0)}</span>
+                      </div>
                     </div>
 
-                    <div className="w-full md:w-32">
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Price (৳)"
-                        value={item.price === 0 ? '' : item.price}
-                        onChange={(e) => handleItemFieldChange(item.id, 'price', e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-
-                    <div className="w-full md:w-28 text-right font-bold text-sm text-blue-400">
-                      ৳ {Number(item.quantity || 0) * Number(item.price || 0)}
-                    </div>
-
-                    <button
-                      onClick={() => handleRemoveItem(item.id)}
-                      disabled={items.length === 1}
-                      className={`p-2 rounded-lg transition-all ${items.length === 1 ? 'text-gray-700 cursor-not-allowed' : 'text-red-400 hover:bg-red-500/10 cursor-pointer'}`}
-                    >
-                      <Trash2 size={18} />
-                    </button>
                   </div>
                 ))}
               </div>
