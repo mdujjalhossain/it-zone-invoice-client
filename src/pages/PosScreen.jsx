@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Printer, ShoppingCart, User, MapPin, Phone, Calendar, Hash, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Printer, ShoppingCart, User, MapPin, Phone, Calendar, Hash, Loader2, Wrench, Briefcase } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function POSScreen() {
   const [invoiceNo, setInvoiceNo] = useState('');
   const [currentDate, setCurrentDate] = useState('');
+
+  // Added sales type state to switch between Product Sale and Service Sale
+  const [salesType, setSalesType] = useState('product'); // 'product' | 'service'
 
   // Manual state for products so we can refetch/update easily after invoice submission
   const [productList, setProductList] = useState([]);
@@ -47,12 +50,12 @@ export default function POSScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    const randomId = 'ITZ-' + Math.floor(100000 + Math.random() * 900000);
+    const randomId = (salesType === 'service' ? 'ITZ-SRV-' : 'ITZ-') + Math.floor(100000 + Math.random() * 900000);
     setInvoiceNo(randomId);
 
     const today = new Date().toISOString().split('T')[0];
     setCurrentDate(today);
-  }, []);
+  }, [salesType]);
 
   const handleAddItem = () => {
     setItems([...items, { id: Date.now(), productId: '', productName: '', quantity: 1, price: 0, stock: 0 }]);
@@ -92,7 +95,7 @@ export default function POSScreen() {
         let val = value;
         if (field === 'quantity' || field === 'price') {
           val = value === '' ? '' : Math.max(0, Number(value));
-          if (field === 'quantity' && val > item.stock && item.stock > 0) {
+          if (salesType === 'product' && field === 'quantity' && val > item.stock && item.stock > 0) {
             Swal.fire({
               title: 'Stock Warning',
               text: `Requested quantity (${val}) exceeds available stock (${item.stock})!`,
@@ -127,15 +130,22 @@ export default function POSScreen() {
       return;
     }
 
-    if (items.some(item => !item.productName || item.price <= 0 || !item.quantity)) {
+    if (salesType === 'product' && items.some(item => !item.productName || item.price <= 0 || !item.quantity)) {
       setErrorMsg("Please ensure all items have a selected product, valid quantity, and price!");
       return;
     }
 
-    for (const item of items) {
-      if (item.stock > 0 && item.quantity > item.stock) {
-        setErrorMsg(`Item "${item.productName}" exceeds current stock limit (${item.stock} available).`);
-        return;
+    if (salesType === 'service' && items.some(item => !item.productName || item.price <= 0)) {
+      setErrorMsg("Please ensure all service items have a description and valid price!");
+      return;
+    }
+
+    if (salesType === 'product') {
+      for (const item of items) {
+        if (item.stock > 0 && item.quantity > item.stock) {
+          setErrorMsg(`Item "${item.productName}" exceeds current stock limit (${item.stock} available).`);
+          return;
+        }
       }
     }
 
@@ -146,8 +156,9 @@ export default function POSScreen() {
       invoiceNo,
       currentDate,
       customer,
+      salesType, // sent to differentiate product vs service billing
       items: items.map(i => ({
-        productId: i.productId,
+        productId: i.productId || null,
         productName: i.productName,
         quantity: Number(i.quantity),
         price: Number(i.price)
@@ -158,7 +169,12 @@ export default function POSScreen() {
     };
 
     try {
-      const response = await fetch('https://it-zone-invoice-server.vercel.app/invoices-with-stock', {
+      // Endpoint routing based on sales type
+      const endpoint = salesType === 'service' 
+        ? 'https://it-zone-invoice-server.vercel.app/services-invoice' 
+        : 'https://it-zone-invoice-server.vercel.app/invoices-with-stock';
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -168,19 +184,18 @@ export default function POSScreen() {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to process invoice and update inventory');
+        throw new Error(data.error || 'Failed to process invoice and update records');
       }
-
-      // console.log('Invoice processed & inventory decremented:', data);
       
-      // Refresh inventory products from backend so stock updates dynamically without page reload
-      await fetchProducts();
+      if (salesType === 'product') {
+        await fetchProducts();
+      }
 
       setIsSubmitting(false);
       window.print();
     } catch (err) {
       console.error('Network or database error:', err);
-      setErrorMsg('Failed to sync invoice with database or update inventory stock. Print aborted.');
+      setErrorMsg('Failed to sync invoice with database or update records. Print aborted.');
       setIsSubmitting(false);
     }
   };
@@ -198,7 +213,9 @@ export default function POSScreen() {
               <p className="text-[14px] text-gray-600">Phone: +880 1624-687651</p>
             </div>
             <div className="text-right">
-              <h2 className="text-xl font-bold uppercase tracking-widest text-gray-800">INVOICE</h2>
+              <h2 className="text-xl font-bold uppercase tracking-widest text-gray-800">
+                {salesType === 'service' ? 'SERVICE INVOICE' : 'INVOICE'}
+              </h2>
               <p className="text-[14px] text-gray-600 mt-0.5"><span className="font-semibold">Invoice No:</span> {invoiceNo}</p>
               <p className="text-[14px] text-gray-600"><span className="font-semibold">Date:</span> {currentDate}</p>
             </div>
@@ -222,7 +239,7 @@ export default function POSScreen() {
           <table className="w-full mb-3 border-collapse">
             <thead>
               <tr className="bg-black text-white text-[10px] uppercase">
-                <th className="py-1.5 px-2 text-left">Description / Product</th>
+                <th className="py-1.5 px-2 text-left">{salesType === 'service' ? 'Service Description' : 'Description / Product'}</th>
                 <th className="py-1.5 px-2 text-center w-16">Qty</th>
                 <th className="py-1.5 px-2 text-right w-24">Unit Price</th>
                 <th className="py-1.5 px-2 text-right w-24">Subtotal</th>
@@ -291,6 +308,43 @@ export default function POSScreen() {
             {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Printer size={18} />} 
             Complete & Print Invoice
           </button>
+        </div>
+
+        {/* Sales Type Selection Bar */}
+        <div className="bg-[#111827] border border-gray-800 p-4 rounded-2xl shadow-xl flex items-center justify-between gap-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+            <ShoppingCart size={16} className="text-blue-400" /> Select Sales Type:
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSalesType('product');
+                setItems([{ id: 1, productId: '', productName: '', quantity: 1, price: 0, stock: 0 }]);
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                salesType === 'product'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white'
+              }`}
+            >
+              <ShoppingCart size={14} /> Product Sale
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSalesType('service');
+                setItems([{ id: 1, productId: '', productName: '', quantity: 1, price: 0, stock: 0 }]);
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                salesType === 'service'
+                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
+                  : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white'
+              }`}
+            >
+              <Wrench size={14} /> Service Sale
+            </button>
+          </div>
         </div>
 
         {errorMsg && (
@@ -381,11 +435,15 @@ export default function POSScreen() {
               </div>
             </div>
 
-            {/* Inventory Connected Products Card */}
+            {/* Products or Services Selection Card */}
             <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl space-y-4">
               <div className="flex items-center justify-between border-b border-gray-800 pb-2">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-                  <ShoppingCart size={16} className="text-blue-400" /> Inventory Products Selection <span className="text-red-400">*</span>
+                  {salesType === 'service' ? (
+                    <><Wrench size={16} className="text-amber-400" /> Service Repair Billing <span className="text-red-400">*</span></>
+                  ) : (
+                    <><ShoppingCart size={16} className="text-blue-400" /> Inventory Products Selection <span className="text-red-400">*</span></>
+                  )}
                 </h3>
                 <button
                   onClick={handleAddItem}
@@ -401,38 +459,48 @@ export default function POSScreen() {
                     <span className="text-xs text-gray-500 font-bold w-6">#{index + 1}</span>
                     
                     <div className="flex-1 w-full">
-                      <select
-                        value={item.productId}
-                        onChange={(e) => handleProductSelect(item.id, e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
-                      >
-                        <option value="">-- Select Product from Inventory --</option>
-                        {inventoryLoading ? (
-                          <option disabled>Loading inventory...</option>
-                        ) : (
-                          productList.map(prod => {
-                            const cleanName = prod.productName || prod.name;
-                            return (
-                              <option key={prod._id || prod.id} value={prod._id || prod.id}>
-                                {cleanName} (Stock: {prod.quantity ?? prod.stock ?? 0})
-                              </option>
-                            );
-                          })
-                        )}
-                      </select>
+                      {salesType === 'product' ? (
+                        <select
+                          value={item.productId}
+                          onChange={(e) => handleProductSelect(item.id, e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="">-- Select Product from Inventory --</option>
+                          {inventoryLoading ? (
+                            <option disabled>Loading inventory...</option>
+                          ) : (
+                            productList.map(prod => {
+                              const cleanName = prod.productName || prod.name;
+                              return (
+                                <option key={prod._id || prod.id} value={prod._id || prod.id}>
+                                  {cleanName} (Stock: {prod.quantity ?? prod.stock ?? 0})
+                                </option>
+                              );
+                            })
+                          )}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="Enter service/repair details (e.g. Display Issue)"
+                          value={item.productName}
+                          onChange={(e) => handleItemFieldChange(item.id, 'productName', e.target.value)}
+                          className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500"
+                        />
+                      )}
                     </div>
 
                     <div className="w-full md:w-24">
                       <input
                         type="number"
                         min="1"
-                        max={item.stock || 9999}
+                        max={salesType === 'product' ? (item.stock || 9999) : 9999}
                         placeholder="Qty"
                         value={item.quantity}
                         onChange={(e) => handleItemFieldChange(item.id, 'quantity', e.target.value)}
                         className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
                       />
-                      <span className="text-[10px] text-gray-400 block mt-0.5">Available: {item.stock}</span>
+                      {salesType === 'product' && <span className="text-[10px] text-gray-400 block mt-0.5">Available: {item.stock}</span>}
                     </div>
 
                     <div className="w-full md:w-32">
