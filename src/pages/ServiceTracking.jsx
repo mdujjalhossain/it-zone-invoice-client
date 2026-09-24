@@ -98,7 +98,7 @@ export default function ServiceTracking() {
     }
 
     const ticketItem = {
-      id: `SRV-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: `ITZ-SRV-${Math.floor(1000 + Math.random() * 9000)}`,
       date: new Date().toISOString().split('T')[0],
       customerName: newTicket.customerName,
       phone: newTicket.phone,
