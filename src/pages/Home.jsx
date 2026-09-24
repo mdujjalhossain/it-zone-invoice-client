@@ -5,7 +5,10 @@ import useApi from '../Components/useApi';
 import { Loader2, AlertCircle, DollarSign, Wrench, Package, Briefcase } from 'lucide-react';
 
 export default function Home() {
-  const { data: stats, loading, error } = useApi('https://it-zone-invoice-server.vercel.app/analytics/stats');
+  const { data: rawStats, loading, error } = useApi('https://it-zone-invoice-server.vercel.app/analytics/stats');
+
+  // Extract stats data safely
+  const stats = rawStats?.data || rawStats;
 
   useEffect(() => {
     document.title = "IT Zone-Inventory | Home";
@@ -46,7 +49,7 @@ export default function Home() {
               </p>
             </Link>
 
-            {/* Today's Service Revenue Card (New Added) */}
+            {/* Today's Service Income Card */}
             <Link 
               to="/services" 
               className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl space-y-3 group hover:border-amber-500/50 hover:shadow-amber-500/10 hover:-translate-y-1 transition-all duration-300 cursor-pointer block"
