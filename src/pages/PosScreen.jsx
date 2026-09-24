@@ -361,9 +361,23 @@ export default function POSScreen() {
           </div>
         </div>
 
+        {/* PAID Stamp / Seal for Print View */}
+        <div className="flex justify-between items-end mt-8 pt-4">
+          <div className="text-[11px] text-gray-500 italic">
+            * Goods once sold will not be taken back or exchanged.
+          </div>
+          
+          <div className="border-2 border-blue-600 rounded-xl px-6 py-2  select-none shadow-sm opacity-75">
+            <p className="text-3xl font-black uppercase tracking-widest text-blue-600 m-0">PAID</p>
+            <p className="text-[10px] font-bold text-blue-700 tracking-wider text-center uppercase m-0">{currentDate}</p>
+          </div>
+        </div>
+
+        {/* posScreen footer with thank you */}
         <div className="text-center border-t border-gray-300 pt-2 mt-auto">
           <p className="text-[10px] font-bold uppercase tracking-widest bg-black text-white py-1">Thank you for your business with IT ZONE!</p>
         </div>
+
       </div>
       
       {/* ----- NORMAL WEB UI SCREEN ----- */}
