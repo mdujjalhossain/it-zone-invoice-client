@@ -13,6 +13,11 @@ export default function POSScreen() {
   const [productList, setProductList] = useState([]);
   const [inventoryLoading, setInventoryLoading] = useState(true);
 
+  // Service Ticket Quick-Fetch States
+  const [activeTickets, setActiveTickets] = useState([]);
+  const [selectedTicketId, setSelectedTicketId] = useState('');
+  const [advancePaid, setAdvancePaid] = useState(0); // Track advance paid from selected service ticket
+
   // Function to fetch products
   const fetchProducts = async () => {
     try {
@@ -34,6 +39,25 @@ export default function POSScreen() {
     document.title = "IT Zone-Inventory | POS";
     fetchProducts();
   }, []);
+
+  // Fetch active service tickets when salesType is 'service'
+  useEffect(() => {
+    if (salesType === 'service') {
+      fetch('https://it-zone-invoice-server.vercel.app/services')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const pending = data.data.filter(t => t.status !== 'Delivered' && t.status !== 'Cancelled');
+            setActiveTickets(pending);
+          }
+        })
+        .catch(err => console.error('Error fetching active tickets:', err));
+    } else {
+      setActiveTickets([]);
+      setSelectedTicketId('');
+      setAdvancePaid(0);
+    }
+  }, [salesType]);
 
   const [customer, setCustomer] = useState({
     name: '',
@@ -65,6 +89,38 @@ export default function POSScreen() {
   const handleRemoveItem = (id) => {
     if (items.length > 1) {
       setItems(items.filter(item => item.id !== id));
+    }
+  };
+
+  const handleSelectTicket = (e) => {
+    const tId = e.target.value;
+    setSelectedTicketId(tId);
+    
+    if (!tId) {
+      setAdvancePaid(0);
+      return;
+    }
+
+    const ticket = activeTickets.find(t => (t._id === tId || t.id === tId));
+    if (ticket) {
+      const adv = Number(ticket.advance) || 0;
+      setAdvancePaid(adv);
+
+      setCustomer({
+        name: ticket.customerName || '',
+        phone: ticket.phone || '',
+        address: ticket.address || ''
+      });
+
+      setItems([{
+        id: Date.now(),
+        productId: ticket._id || ticket.id,
+        productName: ticket.issue || 'Service & Repair',
+        deviceModel: ticket.deviceModel || '',
+        quantity: 1,
+        price: Number(ticket.cost) || 0,
+        stock: 0
+      }]);
     }
   };
 
@@ -123,7 +179,10 @@ export default function POSScreen() {
 
   const subtotal = items.reduce((acc, item) => acc + (Number(item.quantity || 0) * Number(item.price || 0)), 0);
   const discountVal = discount === '' ? 0 : Number(discount);
-  const totalPayable = Math.max(0, subtotal - discountVal);
+  
+  // Total payable after deducting discount AND advance paid from ticket
+  const grossTotal = Math.max(0, subtotal - discountVal);
+  const totalPayable = Math.max(0, grossTotal - (salesType === 'service' ? advancePaid : 0));
 
   const handlePrint = async () => {
     if (!customer.name || !customer.phone || customer.phone.length < 10) {
@@ -158,49 +217,51 @@ export default function POSScreen() {
       currentDate,
       customer,
       salesType,
+      ticketId: selectedTicketId || null,
+      advancePaid: salesType === 'service' ? advancePaid : 0,
       items: items.map(i => ({
         productId: i.productId || null,
         productName: i.productName,
-        deviceModel: i.deviceModel || '', // Saved device model for service items
+        deviceModel: i.deviceModel || '',
         quantity: Number(i.quantity),
         price: Number(i.price)
       })),
       subtotal,
       discountVal,
+      advancePaidVal: advancePaid,
       totalPayable
     };
 
     try {
       const endpoint = salesType === 'service' 
-        ? 'https://it-zone-invoice-server.vercel.app/services-invoice' 
+        ? 'https://it-zone-invoice-server.vercel.app/service-invoices' 
         : 'https://it-zone-invoice-server.vercel.app/invoices-with-stock';
 
       const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(invoicePayload),
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(invoicePayload),
       });
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to process invoice and update records');
+          throw new Error(data.error || 'Failed to process invoice and update records');
       }
       
       if (salesType === 'product') {
-        await fetchProducts();
+          await fetchProducts();
       }
 
       setIsSubmitting(false);
       window.print();
     } 
-    catch (err) {
-      console.error('Network or database error:', err);
-      setErrorMsg('Failed to sync invoice with database or update records. Print aborted.');
-      setIsSubmitting(false);
+    catch (error) {
+        setIsSubmitting(false);
+        console.error('Network or database error:', error);
+        alert(error.message);
     }
-    
   };
 
   return (
@@ -275,6 +336,12 @@ export default function POSScreen() {
                 <div className="flex justify-between text-gray-600">
                   <span>Discount:</span>
                   <span className="font-semibold text-red-600">-৳ {discountVal}</span>
+                </div>
+              )}
+              {salesType === 'service' && advancePaid > 0 && (
+                <div className="flex justify-between text-gray-600">
+                  <span>Advance Paid:</span>
+                  <span className="font-semibold text-green-600">-৳ {advancePaid}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm font-bold border-t border-gray-800 pt-1 text-black">
@@ -354,6 +421,27 @@ export default function POSScreen() {
             </button>
           </div>
         </div>
+
+        {/* Service Ticket Quick-Fetch Dropdown */}
+        {salesType === 'service' && (
+          <div className="bg-[#111827] border border-amber-500/30 p-4 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+              <Wrench size={16} /> Fetch From Active Service Ticket:
+            </div>
+            <select
+              value={selectedTicketId}
+              onChange={handleSelectTicket}
+              className="w-full sm:w-80 bg-gray-900 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+            >
+              <option value="">-- Select Pending Ticket (Auto-Fill) --</option>
+              {activeTickets.map(ticket => (
+                <option key={ticket._id || ticket.id} value={ticket._id || ticket.id}>
+                  {ticket.id} - {ticket.customerName} ({ticket.deviceModel}) {ticket.advance ? `[Adv: ৳${ticket.advance}]` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {errorMsg && (
           <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-between">
@@ -591,6 +679,13 @@ export default function POSScreen() {
                     className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
                   />
                 </div>
+
+                {salesType === 'service' && advancePaid > 0 && (
+                  <div className="flex justify-between text-green-400 bg-green-500/10 border border-green-500/20 p-2.5 rounded-xl">
+                    <span className="font-semibold">Advance Paid Deduction</span>
+                    <span className="font-bold">-৳ {advancePaid}</span>
+                  </div>
+                )}
 
                 <div className="border-t border-gray-800 pt-4 flex justify-between items-center">
                   <span className="text-base font-bold text-white">Total Payable</span>
