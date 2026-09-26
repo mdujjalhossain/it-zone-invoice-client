@@ -656,7 +656,6 @@ export default function InvoiceHistory() {
               )}
             </div>
 
-
               {/* clear the deleted archive */}
             {/* <div className="p-4 border-t border-gray-800 bg-gray-900/50 flex justify-between items-center">
               {deletedInvoices.length > 0 && (
