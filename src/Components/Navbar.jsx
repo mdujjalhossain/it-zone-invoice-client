@@ -12,6 +12,7 @@ export default function Navbar() {
     { name: 'Inventory', path: '/inventory' },
     { name: 'Service Tracking', path: '/services' },
     { name: 'Invoice History', path: '/invoices' },
+    { name: 'Ledger', path: '/ledger' },
   ];
 
   const isActive = (path) => location.pathname === path;
