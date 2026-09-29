@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 const Ledger = () => {
-  // 1. Dynamic Shops State (Initially Empty or fetched from API)
+  // 1. Dynamic Shops State
   const [shops, setShops] = useState([]);
   const [selectedShopId, setSelectedShopId] = useState(null);
 
@@ -27,16 +27,20 @@ const Ledger = () => {
   // 3. Transactions State
   const [transactions, setTransactions] = useState([]);
 
-  // Forms State (Updated shopForm with balanceType)
+  // Forms State
   const [shopForm, setShopForm] = useState({ 
     name: '', 
     owner: '', 
     phone: '', 
     initialBalance: 0, 
-    balanceType: 'RECEIVABLE' // Default: পাবো (Receivable)
+    balanceType: 'RECEIVABLE' 
   });
   
-  const [paymentForm, setPaymentForm] = useState({ amount: '', type: 'PAYMENT', note: '' });
+  const [paymentForm, setPaymentForm] = useState({ 
+    amount: '', 
+    type: 'PAYMENT_IN', 
+    note: '' 
+  });
 
   // Handle Create New Shop
   const handleAddShop = (e) => {
@@ -44,7 +48,6 @@ const Ledger = () => {
     if (!shopForm.name || !shopForm.phone) return;
 
     const rawAmount = parseFloat(shopForm.initialBalance) || 0;
-    // RECEIVABLE (পাবো) হলে positive (+), PAYABLE (দেবো) হলে negative (-)
     const calculatedBalance = shopForm.balanceType === 'RECEIVABLE' ? rawAmount : -rawAmount;
 
     const newShop = {
@@ -56,7 +59,7 @@ const Ledger = () => {
     };
 
     setShops(prev => [...prev, newShop]);
-    setSelectedShopId(newShop.id); // Auto-select newly created shop
+    setSelectedShopId(newShop.id);
     setShopForm({ name: '', owner: '', phone: '', initialBalance: 0, balanceType: 'RECEIVABLE' });
     setIsShopModalOpen(false);
   };
@@ -69,12 +72,34 @@ const Ledger = () => {
     const amountNum = parseFloat(paymentForm.amount);
     if (isNaN(amountNum) || amountNum <= 0) return;
 
-    const isPayment = paymentForm.type === 'PAYMENT';
-    
-    // Update Shop Balance
-    const balanceChange = isPayment ? -amountNum : amountNum;
+    let balanceChange = 0;
+    let debit = 0;
+    let credit = 0;
+
+    switch (paymentForm.type) {
+      case 'PAYMENT_IN': // Got Money from Client (পাওনা কমল)
+        balanceChange = -amountNum;
+        credit = amountNum;
+        break;
+      case 'PAYMENT_OUT': // Paid Money to Supplier (দেনা কমল)
+        balanceChange = amountNum;
+        debit = amountNum;
+        break;
+      case 'INVOICE_OUT': // Sold Goods on Credit (পাওনা বাড়ল)
+        balanceChange = amountNum;
+        debit = amountNum;
+        break;
+      case 'INVOICE_IN': // Bought Goods on Credit / Take from Supplier (দেনা বাড়ল)
+        balanceChange = -amountNum;
+        credit = amountNum;
+        break;
+      default:
+        break;
+    }
+
     const newBalance = selectedShop.balance + balanceChange;
 
+    // Update Shop Balance
     setShops(prevShops => prevShops.map(s => {
       if (s.id === selectedShop.id) {
         return { ...s, balance: newBalance };
@@ -88,19 +113,24 @@ const Ledger = () => {
       shopId: selectedShop.id,
       date: new Date().toISOString().split('T')[0],
       type: paymentForm.type,
-      ref: isPayment ? `PAY-${Math.floor(100 + Math.random() * 900)}` : `INV-${Math.floor(1000 + Math.random() * 9000)}`,
-      debit: isPayment ? 0 : amountNum,
-      credit: isPayment ? amountNum : 0,
+      ref: paymentForm.type.startsWith('PAYMENT') 
+        ? `PAY-${Math.floor(100 + Math.random() * 900)}` 
+        : `INV-${Math.floor(1000 + Math.random() * 9000)}`,
+      debit,
+      credit,
       balance: newBalance,
-      note: paymentForm.note || (isPayment ? 'Payment Received' : 'New Invoice Generated')
+      note: paymentForm.note || (
+        paymentForm.type === 'PAYMENT_IN' ? 'Payment Received' :
+        paymentForm.type === 'PAYMENT_OUT' ? 'Payment Given' :
+        paymentForm.type === 'INVOICE_OUT' ? 'Sales Invoice' : 'Purchase Invoice'
+      )
     };
 
     setTransactions(prev => [...prev, newTx]);
-    setPaymentForm({ amount: '', type: 'PAYMENT', note: '' });
+    setPaymentForm({ amount: '', type: 'PAYMENT_IN', note: '' });
     setIsTxModalOpen(false);
   };
 
-  // Filtered transactions for selected shop
   const activeShopTransactions = transactions.filter(t => t.shopId === selectedShopId);
 
   return (
@@ -112,14 +142,14 @@ const Ledger = () => {
             <Building2 className="w-7 h-7 text-indigo-600" />
             Shop Ledger & Khatian
           </h1>
-          <p className="text-sm text-slate-500">Manage shops, customer balance ledgers, and transaction histories.</p>
+          <p className="text-sm text-slate-500">Manage customer/supplier ledgers and multi-type transactions.</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsShopModalOpen(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all text-sm"
           >
-            <UserPlus className="w-4 h-4" /> Add New Shop
+            <UserPlus className="w-4 h-4" /> Add New Shop/Vendor
           </button>
           {selectedShop && (
             <button 
@@ -136,7 +166,7 @@ const Ledger = () => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
         <div className="lg:col-span-1 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Shops / Clients</label>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider">Shops / Clients / Suppliers</label>
             <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">{shops.length} Total</span>
           </div>
           
@@ -174,7 +204,7 @@ const Ledger = () => {
                     <span className={`text-xs px-2 py-0.5 rounded font-medium ${
                       shop.balance > 0 ? 'bg-amber-100 text-amber-800' : shop.balance < 0 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
                     }`}>
-                      {shop.balance > 0 ? `+৳${shop.balance}` : shop.balance < 0 ? `-৳${Math.abs(shop.balance)}` : '৳0'}
+                      {shop.balance > 0 ? `+৳${shop.balance} (পাবো)` : shop.balance < 0 ? `-৳${Math.abs(shop.balance)} (দেবো)` : '৳0'}
                     </span>
                   </button>
                 ))
@@ -186,7 +216,7 @@ const Ledger = () => {
         <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-500">Net Due (Pabo)</span>
+              <span className="text-sm font-medium text-slate-500">Net Due (পাবো)</span>
               <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
                 <ArrowUpRight className="w-5 h-5" />
               </div>
@@ -201,7 +231,7 @@ const Ledger = () => {
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-500">Advance/Payable (Dena)</span>
+              <span className="text-sm font-medium text-slate-500">Net Payable (দেবো)</span>
               <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
                 <ArrowDownLeft className="w-5 h-5" />
               </div>
@@ -210,13 +240,13 @@ const Ledger = () => {
               <h3 className="text-2xl font-bold text-slate-900 mt-2">
                 ৳{selectedShop && selectedShop.balance < 0 ? Math.abs(selectedShop.balance) : 0}
               </h3>
-              <p className="text-xs text-slate-400 mt-1">Client deposit or supplier payable</p>
+              <p className="text-xs text-slate-400 mt-1">Supplier or advance payable amount</p>
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-500">Active Shop Info</span>
+              <span className="text-sm font-medium text-slate-500">Active Party Info</span>
               <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
                 <Building2 className="w-5 h-5" />
               </div>
@@ -226,7 +256,7 @@ const Ledger = () => {
                 {selectedShop ? selectedShop.name : 'Select a Shop'}
               </h3>
               <p className="text-xs text-slate-500">
-                {selectedShop ? `${selectedShop.owner} • ${selectedShop.phone}` : 'No shop currently selected'}
+                {selectedShop ? `${selectedShop.owner} • ${selectedShop.phone}` : 'No shop selected'}
               </p>
             </div>
           </div>
@@ -252,9 +282,9 @@ const Ledger = () => {
                 <th className="px-5 py-3">Date</th>
                 <th className="px-5 py-3">Ref/Invoice</th>
                 <th className="px-5 py-3">Note / Particulars</th>
-                <th className="px-5 py-3 text-right text-rose-600">Debit (+Pabo)</th>
-                <th className="px-5 py-3 text-right text-emerald-600">Credit (-Peyechi)</th>
-                <th className="px-5 py-3 text-right">Balance</th>
+                <th className="px-5 py-3 text-right">Debit (+Paoana / -Dena)</th>
+                <th className="px-5 py-3 text-right">Credit (-Paoana / +Dena)</th>
+                <th className="px-5 py-3 text-right">Running Balance</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -265,25 +295,52 @@ const Ledger = () => {
                   </td>
                 </tr>
               ) : (
-                activeShopTransactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-5 py-3.5 flex items-center gap-2 whitespace-nowrap">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      {tx.date}
-                    </td>
-                    <td className="px-5 py-3.5 font-medium text-slate-800 whitespace-nowrap">{tx.ref}</td>
-                    <td className="px-5 py-3.5 text-slate-500">{tx.note}</td>
-                    <td className="px-5 py-3.5 text-right font-medium text-rose-600 whitespace-nowrap">
-                      {tx.debit > 0 ? `+৳${tx.debit}` : '-'}
-                    </td>
-                    <td className="px-5 py-3.5 text-right font-medium text-emerald-600 whitespace-nowrap">
-                      {tx.credit > 0 ? `-৳${tx.credit}` : '-'}
-                    </td>
-                    <td className="px-5 py-3.5 text-right font-semibold text-slate-900 whitespace-nowrap">
-                      ৳{tx.balance}
-                    </td>
-                  </tr>
-                ))
+                activeShopTransactions.map((tx) => {
+                  // Dynamic Color Resolution based on Transaction Nature
+                  const isDebitGreen = tx.type === 'PAYMENT_OUT'; // Taka dile dena komlo = Green
+                  const isCreditRed = tx.type === 'INVOICE_IN';  // Bakite kinle dena barlo = Red
+
+                  return (
+                    <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-5 py-3.5 flex items-center gap-2 whitespace-nowrap">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        {tx.date}
+                      </td>
+                      <td className="px-5 py-3.5 font-medium text-slate-800 whitespace-nowrap">{tx.ref}</td>
+                      <td className="px-5 py-3.5 text-slate-500">
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium mr-2 ${
+                          tx.type === 'INVOICE_IN' ? 'bg-rose-100 text-rose-700' :
+                          tx.type === 'PAYMENT_OUT' ? 'bg-emerald-100 text-emerald-700' :
+                          tx.type === 'INVOICE_OUT' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {tx.type === 'PAYMENT_IN' ? 'টাকা আদায়' : 
+                           tx.type === 'PAYMENT_OUT' ? 'টাকা প্রদান' : 
+                           tx.type === 'INVOICE_OUT' ? 'বাকিতে বিক্রি' : 'বাকিতে ক্রয়'}
+                        </span>
+                        {tx.note}
+                      </td>
+                      <td className={`px-5 py-3.5 text-right font-semibold whitespace-nowrap ${
+                        isDebitGreen ? 'text-emerald-600' : 'text-indigo-600'
+                      }`}>
+                        {tx.debit > 0 ? `৳${tx.debit}` : '-'}
+                      </td>
+                      <td className={`px-5 py-3.5 text-right font-semibold whitespace-nowrap ${
+                        isCreditRed ? 'text-rose-600' : 'text-emerald-600'
+                      }`}>
+                        {tx.credit > 0 ? `৳${tx.credit}` : '-'}
+                      </td>
+                      <td className="px-5 py-3.5 text-right font-semibold text-slate-900 whitespace-nowrap">
+                        {tx.balance > 0 ? (
+                          <span className="text-amber-600">+৳{tx.balance} (পাবো)</span>
+                        ) : tx.balance < 0 ? (
+                          <span className="text-rose-600">-৳{Math.abs(tx.balance)} (দেবো)</span>
+                        ) : (
+                          '৳0'
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -295,11 +352,11 @@ const Ledger = () => {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 border border-slate-100">
             <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-indigo-600" /> Add New Shop / Client
+              <UserPlus className="w-5 h-5 text-indigo-600" /> Add New Shop / Vendor
             </h3>
             <form onSubmit={handleAddShop} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Shop Name *</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Name / Shop *</label>
                 <input 
                   type="text"
                   required
@@ -311,7 +368,7 @@ const Ledger = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Owner Name</label>
+                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Owner / Contact Person</label>
                 <input 
                   type="text"
                   placeholder="e.g. Rahim Uddin"
@@ -333,7 +390,6 @@ const Ledger = () => {
                 />
               </div>
 
-              {/* Opening Amount and Balance Type Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Opening Amount (TK)</label>
@@ -353,8 +409,8 @@ const Ledger = () => {
                     onChange={(e) => setShopForm({...shopForm, balanceType: e.target.value})}
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                   >
-                    <option value="RECEIVABLE">পাবো (Receivable)</option>
-                    <option value="PAYABLE">দেবো (Payable)</option>
+                    <option value="RECEIVABLE">পাবো (Receivable - Client)</option>
+                    <option value="PAYABLE">দেবো (Payable - Supplier)</option>
                   </select>
                 </div>
               </div>
@@ -371,7 +427,7 @@ const Ledger = () => {
                   type="submit"
                   className="px-4 py-2 text-sm bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm"
                 >
-                  Create Shop
+                  Create
                 </button>
               </div>
             </form>
@@ -390,10 +446,12 @@ const Ledger = () => {
                 <select 
                   value={paymentForm.type}
                   onChange={(e) => setPaymentForm({...paymentForm, type: e.target.value})}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                 >
-                  <option value="PAYMENT">Payment Received (Credit - Balance Kombe)</option>
-                  <option value="INVOICE">New Bill/Invoice (Debit - Balance Barbe)</option>
+                  <option value="PAYMENT_IN">💵 Received Payment (টাকা আদায় / কাস্টমার দিল)</option>
+                  <option value="PAYMENT_OUT">💸 Paid Money (টাকা প্রদান / সাপ্লায়ারকে দিলাম)</option>
+                  <option value="INVOICE_OUT">🧾 Sales Bill / Due (বাকিতে বিক্রি / পাওনা বাড়ল)</option>
+                  <option value="INVOICE_IN">📦 Purchase Bill / Credit (বাকিতে ক্রয় / দেনা বাড়ল)</option>
                 </select>
               </div>
 
@@ -416,7 +474,7 @@ const Ledger = () => {
                 <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Note / Reference</label>
                 <input 
                   type="text"
-                  placeholder="e.g. Bkash TrxID / Cash payment"
+                  placeholder="e.g. Bkash / Cash / Invoice #102"
                   value={paymentForm.note}
                   onChange={(e) => setPaymentForm({...paymentForm, note: e.target.value})}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
