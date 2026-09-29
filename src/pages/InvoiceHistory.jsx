@@ -196,7 +196,7 @@ export default function InvoiceHistory() {
               <div>
                 <h1 className="text-2xl font-black tracking-wider text-blue-600">IT ZONE</h1>
                 <p className="text-[14px] text-gray-600 font-semibold mt-0.5">Shop No. E-174, Sena Complex, Nabinagar, Savar, Dhaka</p>
-                <p className="text-[14px] text-gray-600">Phone: +880 1624-687651</p>
+                <p className="text-[14px] text-gray-600">Phone: +8801727-175377</p>
               </div>
               <div className="text-right">
                 <h2 className="text-xl font-bold uppercase tracking-widest text-gray-800">INVOICE</h2>
@@ -210,7 +210,7 @@ export default function InvoiceHistory() {
                 <h3 className="text-[14px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">Seller</h3>
                 <p className="font-bold text-gray-900">IT ZONE</p>
                 <p className="text-[14px] text-gray-600">Savar Sena Complex</p>
-                <p className="text-[14px] text-gray-600">Phone: +8801624687651</p>
+                <p className="text-[14px] text-gray-600">Phone: +8801727175377</p>
               </div>
               <div>
                 <h3 className="text-[14px] font-bold uppercase tracking-wider text-gray-500 mb-0.5">Bill To</h3>
