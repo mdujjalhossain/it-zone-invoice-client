@@ -1,11 +1,12 @@
 import { createBrowserRouter } from "react-router";
 import Root from "../Layout/Root";
 import Home from "../pages/Home";
-import PosScreen from "../pages/posScreen";
 import UnderDevelopment from "../Components/UnderDevelopment";
 import InvoiceHistory from "../pages/InvoiceHistory";
 import Inventory from "../pages/Inventory";
 import ServiceTracking from "../pages/ServiceTracking";
+import POSScreen from "../pages/PosScreen";
+import Ledger from "../pages/Ledger";
 
 export const router = createBrowserRouter([
     {
@@ -19,7 +20,7 @@ export const router = createBrowserRouter([
             },
             {
                 path: '/billing',
-                Component: PosScreen,
+                Component: POSScreen,
             },
             {
                 path: '/invoices',
@@ -32,6 +33,10 @@ export const router = createBrowserRouter([
             {
                 path: '/services',
                 Component: ServiceTracking,
+            },
+            {
+                path: '/ledger',
+                Component: Ledger,
             },
 
         ]
