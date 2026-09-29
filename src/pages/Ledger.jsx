@@ -27,8 +27,15 @@ const Ledger = () => {
   // 3. Transactions State
   const [transactions, setTransactions] = useState([]);
 
-  // Forms State
-  const [shopForm, setShopForm] = useState({ name: '', owner: '', phone: '', initialBalance: 0 });
+  // Forms State (Updated shopForm with balanceType)
+  const [shopForm, setShopForm] = useState({ 
+    name: '', 
+    owner: '', 
+    phone: '', 
+    initialBalance: 0, 
+    balanceType: 'RECEIVABLE' // Default: পাবো (Receivable)
+  });
+  
   const [paymentForm, setPaymentForm] = useState({ amount: '', type: 'PAYMENT', note: '' });
 
   // Handle Create New Shop
@@ -36,17 +43,21 @@ const Ledger = () => {
     e.preventDefault();
     if (!shopForm.name || !shopForm.phone) return;
 
+    const rawAmount = parseFloat(shopForm.initialBalance) || 0;
+    // RECEIVABLE (পাবো) হলে positive (+), PAYABLE (দেবো) হলে negative (-)
+    const calculatedBalance = shopForm.balanceType === 'RECEIVABLE' ? rawAmount : -rawAmount;
+
     const newShop = {
       id: Date.now().toString(),
       name: shopForm.name,
       owner: shopForm.owner || 'N/A',
       phone: shopForm.phone,
-      balance: parseFloat(shopForm.initialBalance) || 0
+      balance: calculatedBalance
     };
 
     setShops(prev => [...prev, newShop]);
     setSelectedShopId(newShop.id); // Auto-select newly created shop
-    setShopForm({ name: '', owner: '', phone: '', initialBalance: 0 });
+    setShopForm({ name: '', owner: '', phone: '', initialBalance: 0, balanceType: 'RECEIVABLE' });
     setIsShopModalOpen(false);
   };
 
@@ -56,13 +67,17 @@ const Ledger = () => {
     if (!paymentForm.amount || !selectedShop) return;
 
     const amountNum = parseFloat(paymentForm.amount);
+    if (isNaN(amountNum) || amountNum <= 0) return;
+
     const isPayment = paymentForm.type === 'PAYMENT';
     
     // Update Shop Balance
     const balanceChange = isPayment ? -amountNum : amountNum;
+    const newBalance = selectedShop.balance + balanceChange;
+
     setShops(prevShops => prevShops.map(s => {
       if (s.id === selectedShop.id) {
-        return { ...s, balance: s.balance + balanceChange };
+        return { ...s, balance: newBalance };
       }
       return s;
     }));
@@ -76,7 +91,7 @@ const Ledger = () => {
       ref: isPayment ? `PAY-${Math.floor(100 + Math.random() * 900)}` : `INV-${Math.floor(1000 + Math.random() * 9000)}`,
       debit: isPayment ? 0 : amountNum,
       credit: isPayment ? amountNum : 0,
-      balance: selectedShop.balance + balanceChange,
+      balance: newBalance,
       note: paymentForm.note || (isPayment ? 'Payment Received' : 'New Invoice Generated')
     };
 
@@ -102,14 +117,14 @@ const Ledger = () => {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsShopModalOpen(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all text-sm"
           >
             <UserPlus className="w-4 h-4" /> Add New Shop
           </button>
           {selectedShop && (
             <button 
               onClick={() => setIsTxModalOpen(true)}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all"
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition-all text-sm"
             >
               <Plus className="w-4 h-4" /> Add Transaction
             </button>
@@ -157,9 +172,9 @@ const Ledger = () => {
                       <p className="text-xs text-slate-400 font-normal">{shop.phone}</p>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded font-medium ${
-                      shop.balance > 0 ? 'bg-amber-100 text-amber-800' : shop.balance < 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                      shop.balance > 0 ? 'bg-amber-100 text-amber-800' : shop.balance < 0 ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-600'
                     }`}>
-                      ৳{Math.abs(shop.balance)}
+                      {shop.balance > 0 ? `+৳${shop.balance}` : shop.balance < 0 ? `-৳${Math.abs(shop.balance)}` : '৳0'}
                     </span>
                   </button>
                 ))
@@ -186,8 +201,8 @@ const Ledger = () => {
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-500">Advance/Payable</span>
-              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <span className="text-sm font-medium text-slate-500">Advance/Payable (Dena)</span>
+              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
                 <ArrowDownLeft className="w-5 h-5" />
               </div>
             </div>
@@ -195,7 +210,7 @@ const Ledger = () => {
               <h3 className="text-2xl font-bold text-slate-900 mt-2">
                 ৳{selectedShop && selectedShop.balance < 0 ? Math.abs(selectedShop.balance) : 0}
               </h3>
-              <p className="text-xs text-slate-400 mt-1">Client deposit or advance</p>
+              <p className="text-xs text-slate-400 mt-1">Client deposit or supplier payable</p>
             </div>
           </div>
 
@@ -318,15 +333,30 @@ const Ledger = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Opening Dues/Balance (TK)</label>
-                <input 
-                  type="number"
-                  placeholder="0 (Optional starting balance)"
-                  value={shopForm.initialBalance}
-                  onChange={(e) => setShopForm({...shopForm, initialBalance: e.target.value})}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+              {/* Opening Amount and Balance Type Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Opening Amount (TK)</label>
+                  <input 
+                    type="number"
+                    placeholder="0.00"
+                    value={shopForm.initialBalance}
+                    onChange={(e) => setShopForm({...shopForm, initialBalance: e.target.value})}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">Balance Type</label>
+                  <select 
+                    value={shopForm.balanceType}
+                    onChange={(e) => setShopForm({...shopForm, balanceType: e.target.value})}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                  >
+                    <option value="RECEIVABLE">পাবো (Receivable)</option>
+                    <option value="PAYABLE">দেবো (Payable)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3">
