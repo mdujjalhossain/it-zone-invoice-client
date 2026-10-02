@@ -3,9 +3,9 @@ import { Plus, Trash2, Printer, ShoppingCart, User, MapPin, Phone, Calendar, Has
 import Swal from 'sweetalert2';
 
 const DEFAULT_WARRANTY_TERMS = [
-  "14 Days Replacement Guarantee for manufacturing defects.",
-  "1 Years Service Warranty available (Parts excluded).",
-  "No Warranty & Guarantee applicable for Display or Screen."
+  "14 days replacement guarantee for manufacturing defects.",
+  "1 years service warranty available (parts excluded).",
+  "No warranty & guarantee applicable for display or screen."
 ];
 
 export default function POSScreen() {
