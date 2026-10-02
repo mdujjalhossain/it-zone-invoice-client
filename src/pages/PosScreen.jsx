@@ -355,7 +355,7 @@ export default function POSScreen() {
             <p className="font-bold text-black uppercase tracking-wide border-b border-gray-200 pb-1 mb-1">Warranty & Replacement Terms:</p>
             <ul className="list-disc pl-4 space-y-0.5">
               <li><span className="font-semibold">14 Days Replacement Guarantee</span> for manufacturing defects.</li>
-              <li><span className="font-semibold">3 Years Service Warranty</span> available (Parts excluded).</li>
+              <li><span className="font-semibold">1 Years Service Warranty</span> available (Parts excluded).</li>
               <li><span className="font-semibold text-red-600">No Warranty & Guarantee</span> applicable for Display or Screen.</li>
             </ul>
           </div>
