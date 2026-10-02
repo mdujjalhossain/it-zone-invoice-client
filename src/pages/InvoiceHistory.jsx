@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2, AlertCircle, DollarSign, BarChart3 } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
@@ -10,10 +10,10 @@ export default function InvoiceHistory() {
   }, []);
 
   const { data: rawData, setData: setInvoices, loading, error: apiError } = useApi('https://it-zone-invoice-server.vercel.app/invoices');
-  
-  // Safely extract the array whether the API returns a direct array or a wrapped object { data: [...] }
-  const invoicesList = Array.isArray(rawData) 
-    ? rawData 
+
+  // Safely extract array response
+  const invoicesList = Array.isArray(rawData)
+    ? rawData
     : (rawData?.data && Array.isArray(rawData.data) ? rawData.data : []);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,7 +31,6 @@ export default function InvoiceHistory() {
   });
   const [showDeletedModal, setShowDeletedModal] = useState(false);
 
-  // Save deleted items to localStorage to persist across refreshes if needed, or sync with backend collection
   useEffect(() => {
     try {
       localStorage.setItem('it_zone_deleted_invoices', JSON.stringify(deletedInvoices));
@@ -42,27 +41,28 @@ export default function InvoiceHistory() {
 
   // --- Pagination States ---
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // item shows limit in each page
+  const itemsPerPage = 10;
 
+  // Fully dynamic MongoDB document fields mapping (taking exact warrantyTerms from database invoice record)
   const formattedInvoices = invoicesList.map(inv => ({
     id: inv.invoiceNo || inv._id,
     mongoId: inv._id,
-    date: inv.currentDate || 'N/A', // Expecting YYYY-MM-DD or standard date format
+    date: inv.currentDate || 'N/A',
     customerName: inv.customer?.name || 'Unknown',
     phone: inv.customer?.phone || '',
     address: inv.customer?.address || 'N/A',
     items: inv.items || [],
     discount: inv.discountVal || 0,
     totalPayable: inv.totalPayable || 0,
-    warranty: '14 Days Replacement & 1 Years Service Warranty'
+    warrantyTerms: inv.warrantyTerms || []
   }));
 
-  // Date constants for filtering and calculations
-  const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  const currentMonthStr = todayStr.slice(0, 7); // YYYY-MM
-  const currentYearStr = todayStr.slice(0, 4); // YYYY
+  // Date constants for filtering
+  const todayStr = new Date().toISOString().split('T')[0];
+  const currentMonthStr = todayStr.slice(0, 7);
+  const currentYearStr = todayStr.slice(0, 4);
 
-  // Calculations for Today's, Monthly, and Yearly Earnings from Invoices
+  // Earnings calculations
   const todaysTotalEarn = formattedInvoices
     .filter(inv => inv.date === todayStr)
     .reduce((sum, inv) => sum + (Number(inv.totalPayable) || 0), 0);
@@ -75,9 +75,9 @@ export default function InvoiceHistory() {
     .filter(inv => inv.date && inv.date.startsWith(currentYearStr))
     .reduce((sum, inv) => sum + (Number(inv.totalPayable) || 0), 0);
 
-  // Filter invoices based on search term and view mode
+  // Filter invoices
   const filteredInvoices = formattedInvoices.filter(inv => {
-    const matchesSearch = 
+    const matchesSearch =
       inv.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       inv.phone.includes(searchTerm) ||
       inv.customerName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -92,10 +92,9 @@ export default function InvoiceHistory() {
     return matchesSearch;
   });
 
-  // --- Pagination Boundary Calculations ---
+  // Pagination boundaries
   const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage) || 1;
 
-  // Handle boundary condition: if current page exceeds total pages after filtering/deletion, reset it safely
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages > 0 ? totalPages : 1);
@@ -107,12 +106,12 @@ export default function InvoiceHistory() {
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
-    setCurrentPage(1); // Reset to page 1 on search
+    setCurrentPage(1);
   };
 
   const handleViewModeChange = (mode) => {
     setViewMode(mode);
-    setCurrentPage(1); // Reset to page 1 on view change
+    setCurrentPage(1);
   };
 
   const handleDeleteInvoice = async (invoiceId) => {
@@ -145,17 +144,15 @@ export default function InvoiceHistory() {
         throw new Error(result.error || 'Failed to delete invoice');
       }
 
-      // Add to local deleted archive state for tracking
       if (invoiceToDelete) {
         setDeletedInvoices(prev => [...prev, { ...invoiceToDelete, deletedAt: new Date().toLocaleString() }]);
       }
 
-      // Remove from active state list immediately so sales totals and UI update
       setInvoices(prev => {
         const list = Array.isArray(prev) ? prev : (prev?.data || []);
         return list.filter(inv => inv._id !== invoiceId && inv.invoiceNo !== invoiceId);
       });
-      
+
       if (selectedInvoice && (selectedInvoice.id === invoiceId || selectedInvoice.mongoId === invoiceId)) {
         setSelectedInvoice(null);
       }
@@ -232,10 +229,13 @@ export default function InvoiceHistory() {
               <tbody className="divide-y divide-gray-200 text-xs">
                 {selectedInvoice.items.map((item, idx) => (
                   <tr key={idx} className="border-b border-gray-200">
-                    <td className="py-1.5 px-2 text-gray-800 font-medium">{item.productName}</td>
-                    <td className="py-1.5 px-2 text-center text-gray-600">{item.quantity}</td>
+                    <td className="py-1.5 px-2 text-gray-800 font-medium">
+                      {item.productName || item.name}
+                      {item.deviceModel && <span className="block text-[10px] text-gray-500">Model: {item.deviceModel}</span>}
+                    </td>
+                    <td className="py-1.5 px-2 text-center text-gray-600">{item.quantity || item.qty}</td>
                     <td className="py-1.5 px-2 text-right text-gray-600">৳ {item.price}</td>
-                    <td className="py-1.5 px-2 text-right font-semibold text-gray-900">৳ {item.quantity * item.price}</td>
+                    <td className="py-1.5 px-2 text-right font-semibold text-gray-900">৳ {(item.quantity || item.qty) * item.price}</td>
                   </tr>
                 ))}
               </tbody>
@@ -260,14 +260,18 @@ export default function InvoiceHistory() {
               </div>
             </div>
 
-            <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50 text-[12px] space-y-1 text-gray-700 mb-4 mt-10">
-              <p className="font-bold text-black uppercase tracking-wide border-b border-gray-200 pb-1 mb-1">Warranty & Replacement Terms:</p>
-              <ul className="list-disc pl-4 space-y-0.5">
-                <li><span className="font-semibold">14 Days Replacement Guarantee</span> for manufacturing defects.</li>
-                <li><span className="font-semibold">1 Years Service Warranty</span> available (Parts excluded).</li>
-                <li><span className="font-semibold text-red-600">No Warranty & Guarantee</span> applicable for Display or Screen.</li>
-              </ul>
-            </div>
+            {/* print warrantyTerms from database  */}
+
+            {selectedInvoice.warrantyTerms && selectedInvoice.warrantyTerms.length > 0 && (
+              <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50 text-[12px] space-y-1 text-gray-700 mb-4 mt-10">
+                <p className="font-bold text-black uppercase tracking-wide border-b border-gray-200 pb-1 mb-1">Warranty & Replacement Terms:</p>
+                <ul className="list-disc pl-4 space-y-0.5">
+                  {selectedInvoice.warrantyTerms.map((term, index) => (
+                    <li key={index}>{term}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="text-center border-t border-gray-300 pt-2 mt-auto">
@@ -276,7 +280,7 @@ export default function InvoiceHistory() {
         </div>
       )}
 
-      {/* Main Screen Content */}
+      {/* Main UI */}
       <div className="print:hidden space-y-6">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl">
@@ -288,7 +292,6 @@ export default function InvoiceHistory() {
           </div>
         </div>
 
-        {/* API Error Box */}
         {apiError && (
           <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-400 text-sm">
             <AlertCircle size={18} />
@@ -296,7 +299,6 @@ export default function InvoiceHistory() {
           </div>
         )}
 
-        {/* Dynamic Summary Cards (Today, Monthly, Yearly) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl flex items-center justify-between">
             <div>
@@ -329,7 +331,6 @@ export default function InvoiceHistory() {
           </div>
         </div>
 
-        {/* Filter Buttons & Deleted Invoices Button Area */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2 bg-[#111827] border border-gray-800 p-2 rounded-2xl shadow-md">
             <button
@@ -420,7 +421,7 @@ export default function InvoiceHistory() {
                   </tr>
                 ) : currentInvoices.length > 0 ? (
                   currentInvoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-gray-900/40 transition-all">
+                    <tr key={inv.mongoId || inv.id} className="hover:bg-gray-900/40 transition-all">
                       <td className="py-3.5 px-4 font-bold text-blue-400">{inv.id}</td>
                       <td className="py-3.5 px-4 text-gray-400 text-xs flex items-center gap-1.5 mt-1">
                         <Calendar size={14} /> {inv.date}
@@ -462,7 +463,6 @@ export default function InvoiceHistory() {
             </table>
           </div>
 
-          {/* --- Pagination Footer Controls --- */}
           {!loading && filteredInvoices.length > 0 && (
             <div className="p-4 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-400">
               <div>
@@ -471,7 +471,7 @@ export default function InvoiceHistory() {
 
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                   className="p-2 bg-gray-900 border border-gray-800 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer text-gray-300"
                 >
@@ -483,7 +483,7 @@ export default function InvoiceHistory() {
                 </div>
 
                 <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
                   className="p-2 bg-gray-900 border border-gray-800 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer text-gray-300"
                 >
@@ -497,7 +497,7 @@ export default function InvoiceHistory() {
 
       </div>
 
-      {/* Invoice Detail & Verification Modal */}
+      {/* Verification Modal with Database Exact Warranty Mapping */}
       {selectedInvoice && (
         <div className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#111827] border border-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -556,8 +556,11 @@ export default function InvoiceHistory() {
                     <tbody className="divide-y divide-gray-800">
                       {selectedInvoice.items.map((it, idx) => (
                         <tr key={idx}>
-                          <td className="py-3 px-4 font-medium text-white">{it.productName}</td>
-                          <td className="py-3 px-4 text-center">{it.quantity}</td>
+                          <td className="py-3 px-4 font-medium text-white">
+                            {it.productName || it.name}
+                            {it.deviceModel && <span className="block text-xs text-gray-400">Model: {it.deviceModel}</span>}
+                          </td>
+                          <td className="py-3 px-4 text-center">{it.quantity || it.qty}</td>
                           <td className="py-3 px-4 text-right font-semibold">৳ {it.price}</td>
                         </tr>
                       ))}
@@ -566,13 +569,20 @@ export default function InvoiceHistory() {
                 </div>
               </div>
 
-              <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl flex items-center gap-3">
-                <ShieldCheck className="text-green-400 shrink-0" size={24} />
-                <div>
-                  <p className="text-xs text-green-400 font-bold uppercase">Warranty Policy Verified</p>
-                  <p className="text-sm text-gray-200 font-medium">{selectedInvoice.warranty}</p>
+              {/* Render warranty terms from database */}
+              {selectedInvoice.warrantyTerms && selectedInvoice.warrantyTerms.length > 0 && (
+                <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl flex items-start gap-3">
+                  <ShieldCheck className="text-green-400 shrink-0 mt-0.5" size={22} />
+                  <div className="space-y-1">
+                    <p className="text-xs text-green-400 font-bold uppercase">Warranty Policy From Database</p>
+                    <ul className="text-xs text-gray-200 list-disc pl-4 space-y-1">
+                      {selectedInvoice.warrantyTerms.map((term, idx) => (
+                        <li key={idx}>{term}</li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="p-4 border-t border-gray-800 bg-gray-900/50 flex items-center justify-between">
@@ -602,8 +612,7 @@ export default function InvoiceHistory() {
         </div>
       )}
 
-
-      {/* --- Deleted Invoices Serialized Modal --- */}
+      {/* Deleted Invoices Modal */}
       {showDeletedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#111827] border border-gray-800 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -656,27 +665,6 @@ export default function InvoiceHistory() {
                 </div>
               )}
             </div>
-
-              {/* clear the deleted archive */}
-            {/* <div className="p-4 border-t border-gray-800 bg-gray-900/50 flex justify-between items-center">
-              {deletedInvoices.length > 0 && (
-                <button
-                  onClick={() => {
-                    setDeletedInvoices([]);
-                    localStorage.removeItem('it_zone_deleted_invoices');
-                  }}
-                  className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                >
-                  Clear Archive
-                </button>
-              )}
-              <button
-                onClick={() => setShowDeletedModal(false)}
-                className="px-5 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm font-semibold transition-all cursor-pointer ml-auto"
-              >
-                Close
-              </button>
-            </div> */}
 
           </div>
         </div>
