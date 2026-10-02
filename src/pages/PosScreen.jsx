@@ -3,9 +3,10 @@ import { Plus, Trash2, Printer, ShoppingCart, User, MapPin, Phone, Calendar, Has
 import Swal from 'sweetalert2';
 
 const DEFAULT_WARRANTY_TERMS = [
-  "14 days replacement guarantee for manufacturing defects.",
-  "1 years service warranty available (parts excluded).",
-  "No warranty & guarantee applicable for display or screen."
+  "14 Days replacement guarantee for manufacturing defects.",
+  "1 year service warranty available (parts excluded).",
+  "No warranty & guarantee applicable for display or screen.",
+  "Warranty void: If physical damage, burn mark, liquid damage, or sticker tampering is found."
 ];
 
 export default function POSScreen() {
@@ -34,8 +35,8 @@ export default function POSScreen() {
       setInventoryLoading(true);
       const res = await fetch('https://it-zone-invoice-server.vercel.app/products');
       const rawInventory = await res.json();
-      const list = Array.isArray(rawInventory) 
-        ? rawInventory 
+      const list = Array.isArray(rawInventory)
+        ? rawInventory
         : (rawInventory?.data && Array.isArray(rawInventory.data) ? rawInventory.data : []);
       setProductList(list);
     } catch (err) {
@@ -75,7 +76,7 @@ export default function POSScreen() {
     phone: ''
   });
 
-  // Updated items state to include deviceModel for service sales
+  // Items state to include deviceModel for service sales
   const [items, setItems] = useState([
     { id: 1, productId: '', productName: '', deviceModel: '', quantity: 1, price: 0, stock: 0 }
   ]);
@@ -91,6 +92,56 @@ export default function POSScreen() {
     const today = new Date().toISOString().split('T')[0];
     setCurrentDate(today);
   }, [salesType]);
+
+  // Dynamic Warranty Terms Formatter with Singular/Plural Year Handling & Custom Styles
+  const renderFormattedTerm = (term, isPrint = false) => {
+    // Standardize "1 Years" -> "1 Year" & "2+ Year" -> "X Years" dynamically
+    let normalizedTerm = term.replace(/(\b\d+\b)\s*years?\b/gi, (match, num) => {
+      const count = parseInt(num, 10);
+      return `${count} ${count === 1 ? 'Year' : 'Years'}`;
+    });
+
+    // Dynamic Splitting RegEx to target key phrases for formatting
+    const parts = normalizedTerm.split(/(\d+\s*Days Replacement Guarantee|\d+\s*Years?\s*Service Warranty|No Warranty & Guarantee|No Warranty and Guarantee|Warranty void:)/gi);
+
+    return (
+      <span>
+        {parts.map((part, i) => {
+          const lower = part.toLowerCase();
+
+          // 1. Specifically style "No Warranty & Guarantee" as red & semibold
+          const isNoWarrantyKey =
+            lower.includes("no warranty & guarantee") ||
+            lower.includes("no warranty and guarantee");
+
+          if (isNoWarrantyKey) {
+            return (
+              <span key={i} className={`font-semibold ${isPrint ? 'text-red-600' : 'text-red-400'}`}>
+                {part}
+              </span>
+            );
+          }
+
+          // 2. Standard semibold style for other key warranty phrases
+          const isStandardKey =
+            /^\d+\s*days replacement guarantee$/i.test(part) ||
+            /^\d+\s*years?\s*service warranty$/i.test(part) ||
+            lower.includes("warranty void:");
+
+          if (isStandardKey) {
+            return (
+              <span key={i} className="font-semibold">
+                {part}
+              </span>
+            );
+          }
+
+          // 3. Unformatted standard text (e.g., " applicable for Display or Screen.")
+          return part;
+        })}
+      </span>
+    );
+  };
 
   // Warranty Term Handlers
   const handleTermChange = (index, value) => {
@@ -125,7 +176,7 @@ export default function POSScreen() {
   const handleSelectTicket = (e) => {
     const tId = e.target.value;
     setSelectedTicketId(tId);
-    
+
     if (!tId) {
       setAdvancePaid(0);
       return;
@@ -156,7 +207,7 @@ export default function POSScreen() {
 
   const handleProductSelect = (id, selectedProductId) => {
     const selectedProd = productList.find(p => (p._id === selectedProductId || p.id === selectedProductId));
-    
+
     const updatedItems = items.map(item => {
       if (item.id === id) {
         if (!selectedProd) {
@@ -168,7 +219,7 @@ export default function POSScreen() {
           productName: selectedProd.productName || selectedProd.name || '',
           price: Number(selectedProd.sellingPrice || selectedProd.price || 0),
           stock: Number(selectedProd.quantity || selectedProd.stock || 0),
-          quantity: 1 
+          quantity: 1
         };
       }
       return item;
@@ -184,8 +235,8 @@ export default function POSScreen() {
           val = value === '' ? '' : Math.max(0, Number(value));
           if (salesType === 'product' && field === 'quantity' && val > item.stock && item.stock > 0) {
             Swal.fire({
-              title: 'Stock Warning',
-              text: `Requested quantity (${val}) exceeds available stock (${item.stock})!`,
+              title: 'Stock Limit Warning',
+              text: `Requested quantity (${val}) exceeds available stock (${item.stock}) for this product!`,
               icon: 'warning',
               background: '#111827',
               color: '#f3f4f6',
@@ -209,14 +260,14 @@ export default function POSScreen() {
 
   const subtotal = items.reduce((acc, item) => acc + (Number(item.quantity || 0) * Number(item.price || 0)), 0);
   const discountVal = discount === '' ? 0 : Number(discount);
-  
-  // Total payable after deducting discount AND advance paid from ticket
+
+  // Total payable calculation
   const grossTotal = Math.max(0, subtotal - discountVal);
   const totalPayable = Math.max(0, grossTotal - (salesType === 'service' ? advancePaid : 0));
 
   const handlePrint = async () => {
     if (!customer.name || !customer.phone || customer.phone.length < 10) {
-      setErrorMsg("Please enter valid customer name and phone number for invoice print!");
+      setErrorMsg("Please enter valid customer name, phone number, address, and other details for invoice print!");
       return;
     }
 
@@ -242,6 +293,14 @@ export default function POSScreen() {
     setErrorMsg('');
     setIsSubmitting(true);
 
+    // Normalize Warranty Terms for Singular/Plural Year Handling before saving/printing
+    const formattedWarrantyTerms = warrantyTerms.map(term => {
+      return term.replace(/(\b\d+\b)\s*years?\b/gi, (match, num) => {
+        const count = parseInt(num, 10);
+        return `${count} ${count === 1 ? 'Year' : 'Years'}`;
+      });
+    });
+
     const invoicePayload = {
       invoiceNo,
       currentDate,
@@ -249,7 +308,7 @@ export default function POSScreen() {
       salesType,
       ticketId: selectedTicketId || null,
       advancePaid: salesType === 'service' ? advancePaid : 0,
-      warrantyTerms,
+      warrantyTerms: formattedWarrantyTerms,
       items: items.map(i => ({
         productId: i.productId || null,
         productName: i.productName,
@@ -264,40 +323,52 @@ export default function POSScreen() {
     };
 
     try {
-      const endpoint = salesType === 'service' 
-        ? 'https://it-zone-invoice-server.vercel.app/service-invoices' 
+      const endpoint = salesType === 'service'
+        ? 'https://it-zone-invoice-server.vercel.app/service-invoices'
         : 'https://it-zone-invoice-server.vercel.app/invoices-with-stock';
 
       const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(invoicePayload),
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(invoicePayload),
       });
 
       const data = await response.json();
       if (!response.ok) {
-          throw new Error(data.error || 'Failed to process invoice and update records');
+        throw new Error(data.error || 'Failed to process invoice and update stock records');
       }
-      
+
       if (salesType === 'product') {
-          await fetchProducts();
+        await fetchProducts();
       }
 
       setIsSubmitting(false);
       window.print();
-    } 
+    }
     catch (error) {
-        setIsSubmitting(false);
-        console.error('Network or database error:', error);
-        alert(error.message);
+      setIsSubmitting(false);
+      console.error('Network or database error:', error);
+
+      // Replaced browser default alert with SweetAlert2 modal
+      Swal.fire({
+        title: 'Insufficient Stock',
+        text: error.message,
+        icon: 'error',
+        background: '#111827',
+        color: '#f3f4f6',
+        confirmButtonColor: '#ef4444',
+        customClass: {
+          popup: 'rounded-2xl border border-gray-800'
+        }
+      });
     }
   };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      
+
       {/* ----- PRINT ONLY INVOICE TEMPLATE ----- */}
       <div className="hidden print:flex flex-col justify-between bg-white text-black p-14 w-[210mm] h-[270mm] mx-auto font-sans box-border relative overflow-hidden">
         <div>
@@ -386,10 +457,23 @@ export default function POSScreen() {
           {warrantyTerms.length > 0 && (
             <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50 text-[12px] space-y-1 text-gray-700 mb-4 mt-10">
               <p className="font-bold text-black uppercase tracking-wide border-b border-gray-200 pb-1 mb-1">Warranty & Replacement Terms:</p>
+
               <ul className="list-disc pl-4 space-y-0.5">
-                {warrantyTerms.map((term, index) => (
-                  <li key={index}>{term}</li>
-                ))}
+                {[...warrantyTerms]
+                  .sort((a, b) => {
+                    // Push "Warranty VOID:" line to the very end of the array
+                    const aIsVoid = a.toLowerCase().includes("warranty void:");
+                    const bIsVoid = b.toLowerCase().includes("warranty void:");
+
+                    if (aIsVoid && !bIsVoid) return 1;  // Move 'Warranty VOID' down
+                    if (!aIsVoid && bIsVoid) return -1; // Keep standard terms up
+                    return 0;
+                  })
+                  .map((term, index) => (
+                    <li key={index}>
+                      {renderFormattedTerm(term, true)}
+                    </li>
+                  ))}
               </ul>
             </div>
           )}
@@ -400,20 +484,20 @@ export default function POSScreen() {
           <div className="text-[11px] text-gray-500 italic">
             * Goods once sold will not be taken back or exchanged.
           </div>
-          
+
           <div className="border-2 border-blue-600 rounded-xl px-6 py-2 select-none shadow-sm opacity-75">
             <p className="text-3xl font-black uppercase tracking-widest text-blue-600 m-0">PAID</p>
             <p className="text-[10px] font-bold text-blue-700 tracking-wider text-center uppercase m-0">{currentDate}</p>
           </div>
         </div>
 
-        {/* posScreen footer with thank you */}
+        {/* Print Footer */}
         <div className="text-center border-t border-gray-300 pt-2 mt-auto">
           <p className="text-[10px] font-bold uppercase tracking-widest bg-black text-white py-1">Thank you for your business with IT ZONE!</p>
         </div>
 
       </div>
-      
+
       {/* ----- NORMAL WEB UI SCREEN ----- */}
       <div className="print:hidden space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl">
@@ -428,7 +512,7 @@ export default function POSScreen() {
             disabled={isSubmitting}
             className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
           >
-            {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Printer size={18} />} 
+            {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : <Printer size={18} />}
             Complete & Print Invoice
           </button>
         </div>
@@ -445,11 +529,10 @@ export default function POSScreen() {
                 setSalesType('product');
                 setItems([{ id: 1, productId: '', productName: '', deviceModel: '', quantity: 1, price: 0, stock: 0 }]);
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                salesType === 'product'
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white'
-              }`}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${salesType === 'product'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white'
+                }`}
             >
               <ShoppingCart size={14} /> Product Sale
             </button>
@@ -459,11 +542,10 @@ export default function POSScreen() {
                 setSalesType('service');
                 setItems([{ id: 1, productId: '', productName: '', deviceModel: '', quantity: 1, price: 0, stock: 0 }]);
               }}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                salesType === 'service'
-                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
-                  : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white'
-              }`}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${salesType === 'service'
+                ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30'
+                : 'bg-gray-900 text-gray-400 border border-gray-800 hover:text-white'
+                }`}
             >
               <Wrench size={14} /> Service Sale
             </button>
@@ -499,9 +581,9 @@ export default function POSScreen() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* Customer Details Card */}
             <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl space-y-4">
               <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 border-b border-gray-800 pb-2 flex items-center gap-2">
@@ -543,7 +625,7 @@ export default function POSScreen() {
                       type="text"
                       placeholder="Enter customer name"
                       value={customer.name}
-                      onChange={(e) => setCustomer({...customer, name: e.target.value})}
+                      onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
                       className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
                     />
                   </div>
@@ -571,7 +653,7 @@ export default function POSScreen() {
                       type="text"
                       placeholder="House, Road, Area, City"
                       value={customer.address}
-                      onChange={(e) => setCustomer({...customer, address: e.target.value})}
+                      onChange={(e) => setCustomer({ ...customer, address: e.target.value })}
                       className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-blue-500"
                     />
                   </div>
@@ -701,7 +783,7 @@ export default function POSScreen() {
               </div>
             </div>
 
-            {/* Editable Warranty & Terms Customizer Card */}
+            {/* Dynamic Warranty & Terms Customized Card */}
             <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl space-y-4">
               <div className="flex items-center justify-between border-b border-gray-800 pb-2">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
@@ -717,25 +799,31 @@ export default function POSScreen() {
               </div>
 
               <div className="space-y-2">
-                {warrantyTerms.map((term, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={term}
-                      onChange={(e) => handleTermChange(idx, e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
-                      placeholder={`Term #${idx + 1}`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTerm(idx)}
-                      className="p-2 text-red-400 hover:text-red-300 cursor-pointer transition-colors"
-                      title="Remove Line"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
+                {warrantyTerms.map((term, idx) => {
+                  const isNoWarranty = term.toLowerCase().includes("no warranty");
+                  return (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs flex items-center">
+                        <input
+                          type="text"
+                          value={term}
+                          onChange={(e) => handleTermChange(idx, e.target.value)}
+                          className={`w-full bg-transparent focus:outline-none ${isNoWarranty ? 'text-red-400 font-semibold' : 'text-gray-200'
+                            }`}
+                          placeholder={`Term #${idx + 1}`}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTerm(idx)}
+                        className="p-2 text-red-400 hover:text-red-300 cursor-pointer transition-colors"
+                        title="Remove Line"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="flex gap-2 pt-2 border-t border-gray-800/60">
@@ -802,7 +890,7 @@ export default function POSScreen() {
                   disabled={isSubmitting}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
-                  {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />} 
+                  {isSubmitting ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />}
                   Complete & Print Invoice
                 </button>
               </div>
