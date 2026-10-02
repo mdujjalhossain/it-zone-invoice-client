@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, Printer, ShoppingCart, User, MapPin, Phone, Calendar, Hash, Loader2, Wrench, Laptop, ShieldAlert } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { FaWhatsapp } from "react-icons/fa";
+import { IoLogoWechat } from "react-icons/io5";
 
 const DEFAULT_WARRANTY_TERMS = [
   "14 Days replacement guarantee for manufacturing defects.",
@@ -373,10 +375,33 @@ export default function POSScreen() {
       <div className="hidden print:flex flex-col justify-between bg-white text-black p-14 w-[210mm] h-[270mm] mx-auto font-sans box-border relative overflow-hidden">
         <div>
           <div className="flex justify-between items-start border-b-2 border-gray-800 pt-10 pb-3 mb-3">
+
             <div>
               <h1 className="text-2xl font-black tracking-wider text-blue-600">IT ZONE</h1>
               <p className="text-[14px] text-gray-600 font-semibold mt-0.5">Shop No. E-174, Sena Complex, Nabinagar, Savar, Dhaka</p>
-              <p className="text-[14px] text-gray-600">Phone: +8801727175377</p>
+
+              <div className="flex items-start gap-3 text-[14px] text-gray-600 mt-2">
+                <span className="font-semibold text-gray-700 shrink-0">Phone:</span>
+
+                <div className="flex flex-col gap-1.5">
+                  {/* First Number (WhatsApp + WeChat) */}
+                  <div className="flex items-center gap-2 font-medium text-gray-700">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <FaWhatsapp className="text-green-600 w-4 h-4" />
+                      <IoLogoWechat className="text-green-600 w-4 h-4" />
+                    </div>
+                    <span>+8801727-175377 <span className="text-xs text-gray-500 font-normal">(WhatsApp/WeChat)</span></span>
+                  </div>
+
+                  {/* Second Number (WhatsApp Only) */}
+                  <div className="flex items-center gap-2 font-medium text-gray-700">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <FaWhatsapp className="text-green-600 w-4 h-4" />
+                    </div>
+                    <span>+8801624-687651 <span className="text-xs text-gray-500 font-normal">(WhatsApp)</span></span>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="text-right">
               <h2 className="text-xl font-bold uppercase tracking-widest text-gray-800">

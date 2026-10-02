@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Printer, Calendar, ShieldCheck, FileText, X, Trash2, Loader2, AlertCircle, DollarSign, BarChart3 } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
+import { FaWhatsapp } from "react-icons/fa";
+import { IoLogoWechat } from "react-icons/io5";
 
 export default function InvoiceHistory() {
 
@@ -184,17 +186,41 @@ export default function InvoiceHistory() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
-      
+
       {/* Hidden Print Section */}
       {selectedInvoice && (
         <div className="hidden print:flex flex-col justify-between bg-white text-black p-14 w-[210mm] h-[270mm] mx-auto font-sans box-border relative overflow-hidden">
           <div>
             <div className="flex justify-between items-start border-b-2 border-gray-800 pt-10 pb-3 mb-3">
+
               <div>
                 <h1 className="text-2xl font-black tracking-wider text-blue-600">IT ZONE</h1>
                 <p className="text-[14px] text-gray-600 font-semibold mt-0.5">Shop No. E-174, Sena Complex, Nabinagar, Savar, Dhaka</p>
-                <p className="text-[14px] text-gray-600">Phone: +8801727-175377</p>
+
+                <div className="flex items-start gap-3 text-[14px] text-gray-600 mt-2">
+                  <span className="font-semibold text-gray-700 shrink-0">Phone:</span>
+
+                  <div className="flex flex-col gap-1.5">
+                    {/* First Number (WhatsApp + WeChat) */}
+                    <div className="flex items-center gap-2 font-medium text-gray-700">
+                      <div className="flex items-center gap-1 shrink-0">
+                        <FaWhatsapp className="text-green-600 w-4 h-4" />
+                        <IoLogoWechat className="text-green-600 w-4 h-4" />
+                      </div>
+                      <span>+8801727-175377 <span className="text-xs text-gray-500 font-normal">(WhatsApp/WeChat)</span></span>
+                    </div>
+
+                    {/* Second Number (WhatsApp Only) */}
+                    <div className="flex items-center gap-2 font-medium text-gray-700">
+                      <div className="flex items-center gap-1 shrink-0">
+                        <FaWhatsapp className="text-green-600 w-4 h-4" />
+                      </div>
+                      <span>+8801624-687651 <span className="text-xs text-gray-500 font-normal">(WhatsApp)</span></span>
+                    </div>
+                  </div>
+                </div>
               </div>
+
               <div className="text-right">
                 <h2 className="text-xl font-bold uppercase tracking-widest text-gray-800">INVOICE</h2>
                 <p className="text-[14px] text-gray-600 mt-0.5"><span className="font-semibold">Invoice No:</span> {selectedInvoice.id}</p>
@@ -266,9 +292,23 @@ export default function InvoiceHistory() {
               <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50 text-[12px] space-y-1 text-gray-700 mb-4 mt-10">
                 <p className="font-bold text-black uppercase tracking-wide border-b border-gray-200 pb-1 mb-1">Warranty & Replacement Terms:</p>
                 <ul className="list-disc pl-4 space-y-0.5">
-                  {selectedInvoice.warrantyTerms.map((term, index) => (
-                    <li key={index}>{term}</li>
-                  ))}
+                  {selectedInvoice.warrantyTerms.map((term, index) => {
+                    const lowerTerm = term.toLowerCase();
+
+                    // Check if the term contains display/screen warning or void warning
+                    const isDisplayWarning = lowerTerm.includes('display') || lowerTerm.includes('screen');
+                    const isVoidWarning = lowerTerm.includes('warranty void');
+
+                    return (
+                      <li
+                        key={index}
+                        className={`font-semibold ${isDisplayWarning ? 'text-red-600' : isVoidWarning ? 'text-amber-600' : 'text-gray-700'
+                          }`}
+                      >
+                        {term}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
@@ -282,7 +322,7 @@ export default function InvoiceHistory() {
 
       {/* Main UI */}
       <div className="print:hidden space-y-6">
-        
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl">
           <div>
             <span className="text-xs uppercase tracking-widest px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full font-semibold">
@@ -335,33 +375,29 @@ export default function InvoiceHistory() {
           <div className="flex flex-wrap items-center gap-2 bg-[#111827] border border-gray-800 p-2 rounded-2xl shadow-md">
             <button
               onClick={() => handleViewModeChange('all')}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                viewMode === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
             >
               All Invoices
             </button>
             <button
               onClick={() => handleViewModeChange('today')}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                viewMode === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
             >
               Today's History
             </button>
             <button
               onClick={() => handleViewModeChange('monthly')}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                viewMode === 'monthly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'monthly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
             >
               Monthly History
             </button>
             <button
               onClick={() => handleViewModeChange('yearly')}
-              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                viewMode === 'yearly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-              }`}
+              className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${viewMode === 'yearly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
             >
               Yearly History
             </button>
@@ -379,7 +415,7 @@ export default function InvoiceHistory() {
         <div className="bg-[#111827] border border-gray-800 rounded-2xl shadow-xl overflow-hidden space-y-4">
           <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4">
             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
-              <FileText size={16} className="text-blue-400" /> 
+              <FileText size={16} className="text-blue-400" />
               {viewMode === 'today' ? "Today's Invoices" : viewMode === 'monthly' ? "Monthly Invoices" : viewMode === 'yearly' ? "Yearly Invoices" : "All Invoices"} ({filteredInvoices.length})
             </h3>
 
@@ -501,13 +537,13 @@ export default function InvoiceHistory() {
       {selectedInvoice && (
         <div className="print:hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#111827] border border-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            
+
             <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="text-green-400" size={20} />
                 <h2 className="text-lg font-bold text-white">Invoice & Warranty Verification</h2>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedInvoice(null)}
                 className="text-gray-400 hover:text-white p-1 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-all cursor-pointer"
               >
@@ -616,13 +652,13 @@ export default function InvoiceHistory() {
       {showDeletedModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#111827] border border-gray-800 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            
+
             <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
               <div className="flex items-center gap-2">
                 <Trash2 className="text-red-400" size={20} />
                 <h2 className="text-lg font-bold text-white">Deleted Invoices History ({deletedInvoices.length})</h2>
               </div>
-              <button 
+              <button
                 onClick={() => setShowDeletedModal(false)}
                 className="text-gray-400 hover:text-white p-1 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-all cursor-pointer"
               >
