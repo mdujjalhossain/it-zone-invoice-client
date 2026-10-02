@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Printer, ShoppingCart, User, MapPin, Phone, Calendar, Hash, Loader2, Wrench, Laptop } from 'lucide-react';
+import { Plus, Trash2, Printer, ShoppingCart, User, MapPin, Phone, Calendar, Hash, Loader2, Wrench, Laptop, ShieldAlert } from 'lucide-react';
 import Swal from 'sweetalert2';
+
+const DEFAULT_WARRANTY_TERMS = [
+  "14 Days Replacement Guarantee for manufacturing defects.",
+  "1 Years Service Warranty available (Parts excluded).",
+  "No Warranty & Guarantee applicable for Display or Screen."
+];
 
 export default function POSScreen() {
   const [invoiceNo, setInvoiceNo] = useState('');
@@ -8,6 +14,10 @@ export default function POSScreen() {
 
   // Sales type state: 'product' or 'service'
   const [salesType, setSalesType] = useState('product');
+
+  // Dynamic Warranty Terms States
+  const [warrantyTerms, setWarrantyTerms] = useState(DEFAULT_WARRANTY_TERMS);
+  const [newTermInput, setNewTermInput] = useState('');
 
   // Manual state for products so we can refetch/update easily after invoice submission
   const [productList, setProductList] = useState([]);
@@ -81,6 +91,26 @@ export default function POSScreen() {
     const today = new Date().toISOString().split('T')[0];
     setCurrentDate(today);
   }, [salesType]);
+
+  // Warranty Term Handlers
+  const handleTermChange = (index, value) => {
+    setWarrantyTerms(prev => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+  };
+
+  const handleRemoveTerm = (index) => {
+    setWarrantyTerms(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddTerm = () => {
+    if (newTermInput.trim()) {
+      setWarrantyTerms(prev => [...prev, newTermInput.trim()]);
+      setNewTermInput('');
+    }
+  };
 
   const handleAddItem = () => {
     setItems([...items, { id: Date.now(), productId: '', productName: '', deviceModel: '', quantity: 1, price: 0, stock: 0 }]);
@@ -219,6 +249,7 @@ export default function POSScreen() {
       salesType,
       ticketId: selectedTicketId || null,
       advancePaid: salesType === 'service' ? advancePaid : 0,
+      warrantyTerms,
       items: items.map(i => ({
         productId: i.productId || null,
         productName: i.productName,
@@ -351,14 +382,17 @@ export default function POSScreen() {
             </div>
           </div>
 
-          <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50 text-[12px] space-y-1 text-gray-700 mb-4 mt-10">
-            <p className="font-bold text-black uppercase tracking-wide border-b border-gray-200 pb-1 mb-1">Warranty & Replacement Terms:</p>
-            <ul className="list-disc pl-4 space-y-0.5">
-              <li><span className="font-semibold">14 Days Replacement Guarantee</span> for manufacturing defects.</li>
-              <li><span className="font-semibold">1 Years Service Warranty</span> available (Parts excluded).</li>
-              <li><span className="font-semibold text-red-600">No Warranty & Guarantee</span> applicable for Display or Screen.</li>
-            </ul>
-          </div>
+          {/* Dynamic Warranty & Replacement Terms in Print View */}
+          {warrantyTerms.length > 0 && (
+            <div className="border border-gray-300 rounded p-2.5 bg-gray-50/50 text-[12px] space-y-1 text-gray-700 mb-4 mt-10">
+              <p className="font-bold text-black uppercase tracking-wide border-b border-gray-200 pb-1 mb-1">Warranty & Replacement Terms:</p>
+              <ul className="list-disc pl-4 space-y-0.5">
+                {warrantyTerms.map((term, index) => (
+                  <li key={index}>{term}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* PAID Stamp / Seal for Print View */}
@@ -367,7 +401,7 @@ export default function POSScreen() {
             * Goods once sold will not be taken back or exchanged.
           </div>
           
-          <div className="border-2 border-blue-600 rounded-xl px-6 py-2  select-none shadow-sm opacity-75">
+          <div className="border-2 border-blue-600 rounded-xl px-6 py-2 select-none shadow-sm opacity-75">
             <p className="text-3xl font-black uppercase tracking-widest text-blue-600 m-0">PAID</p>
             <p className="text-[10px] font-bold text-blue-700 tracking-wider text-center uppercase m-0">{currentDate}</p>
           </div>
@@ -664,6 +698,61 @@ export default function POSScreen() {
 
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Editable Warranty & Terms Customizer Card */}
+            <div className="bg-[#111827] border border-gray-800 p-6 rounded-2xl shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-300 flex items-center gap-2">
+                  <ShieldAlert size={16} className="text-amber-400" /> Dynamic Warranty & Terms Conditions
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setWarrantyTerms(DEFAULT_WARRANTY_TERMS)}
+                  className="text-xs text-gray-400 hover:text-white underline cursor-pointer"
+                >
+                  Reset to Default
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {warrantyTerms.map((term, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={term}
+                      onChange={(e) => handleTermChange(idx, e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
+                      placeholder={`Term #${idx + 1}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTerm(idx)}
+                      className="p-2 text-red-400 hover:text-red-300 cursor-pointer transition-colors"
+                      title="Remove Line"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-gray-800/60">
+                <input
+                  type="text"
+                  placeholder="Add custom warranty term..."
+                  value={newTermInput}
+                  onChange={(e) => setNewTermInput(e.target.value)}
+                  className="w-full bg-gray-900 border border-gray-800 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddTerm}
+                  className="px-4 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 border border-blue-500/20 rounded-xl text-xs font-semibold whitespace-nowrap cursor-pointer transition-colors"
+                >
+                  + Add Line
+                </button>
               </div>
             </div>
 
