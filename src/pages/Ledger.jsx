@@ -10,6 +10,7 @@ import {
   FileText,
   UserPlus,
   Pencil,
+  Trash2,
   X,
   Loader2
 } from 'lucide-react';
@@ -200,6 +201,49 @@ const Ledger = () => {
       }
     } catch (err) {
       console.error('Error saving shop:', err);
+      setErrorMsg('Network error occurred');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Delete the shop being edited (DELETE) - also removes its transactions on the server
+  const handleDeleteShop = async () => {
+    if (!editingShopId) return;
+
+    const shopName = shops.find(s => s._id === editingShopId)?.name || 'this shop';
+    const confirmation = await Swal.fire({
+      title: 'Delete this shop?',
+      text: `"${shopName}" and all of its transactions will be permanently deleted.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
+      background: '#111827',
+      color: '#fff',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#374151'
+    });
+    if (!confirmation.isConfirmed) return;
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API}/ledger/shops/${editingShopId}`, { method: 'DELETE' });
+      const data = await res.json();
+
+      if (data.success) {
+        updateShops(list => list.filter(s => s._id !== editingShopId));
+        if (selectedShopId === editingShopId) setSelectedShopId(null);
+        setIsShopModalOpen(false);
+        setEditingShopId(null);
+        setShopForm(emptyShopForm);
+        setErrorMsg('');
+        showSuccess('Shop deleted successfully.');
+      } else {
+        setErrorMsg(data.error || 'Failed to delete shop');
+      }
+    } catch (err) {
+      console.error('Error deleting shop:', err);
       setErrorMsg('Network error occurred');
     } finally {
       setSubmitting(false);
@@ -618,14 +662,28 @@ const Ledger = () => {
                 </div>
               )}
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-800">
-                <button type="button" onClick={() => setIsShopModalOpen(false)} className={ui.btnSecondary}>
-                  Cancel
-                </button>
-                <button type="submit" disabled={submitting} className={ui.btnPrimary}>
-                  {submitting && <Loader2 size={16} className="animate-spin" />}
-                  {editingShopId ? 'Save Changes' : 'Create'}
-                </button>
+              <div className="pt-4 flex items-center justify-between gap-3 border-t border-gray-800">
+                {editingShopId ? (
+                  <button
+                    type="button"
+                    onClick={handleDeleteShop}
+                    disabled={submitting}
+                    className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <Trash2 size={16} /> Delete Shop
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => setIsShopModalOpen(false)} className={ui.btnSecondary}>
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={submitting} className={ui.btnPrimary}>
+                    {submitting && <Loader2 size={16} className="animate-spin" />}
+                    {editingShopId ? 'Save Changes' : 'Create'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -659,7 +717,7 @@ const Ledger = () => {
                   onChange={(e) => setPaymentForm({ ...paymentForm, type: e.target.value })}
                   className={`${ui.input} cursor-pointer`}
                 >
-                  <option value="PAYMENT_IN">💵 Received Payment (টাকা আদায় / কাস্টমার দিল)</option>
+                  <option value="PAYMENT_IN">💵 Received Payment (টাকা আদায় / সাপ্লায়ার দিল)</option>
                   <option value="PAYMENT_OUT">💸 Paid Money (টাকা প্রদান / সাপ্লায়ারকে দিলাম)</option>
                   <option value="INVOICE_OUT">🧾 Sales Bill / Due (বাকিতে বিক্রি / পাওনা বাড়ল)</option>
                   <option value="INVOICE_IN">📦 Purchase Bill / Credit (বাকিতে ক্রয় / দেনা বাড়ল)</option>

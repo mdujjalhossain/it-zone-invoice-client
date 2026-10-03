@@ -22,7 +22,7 @@ export default function Inventory() {
   
   // --- Pagination States ---
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // Limits items displayed per page
+  const itemsPerPage = 20; // Limits items displayed per page
 
   const [newProduct, setNewProduct] = useState({
     name: '',

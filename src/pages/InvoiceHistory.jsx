@@ -43,7 +43,7 @@ export default function InvoiceHistory() {
 
   // --- Pagination States ---
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 20;  // Limits items displayed per page
 
   // Fully dynamic MongoDB document fields mapping (taking exact warrantyTerms from database invoice record)
   const formattedInvoices = invoicesList.map(inv => ({
@@ -185,7 +185,7 @@ export default function InvoiceHistory() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
 
       {/* Hidden Print Section */}
       {selectedInvoice && (
