@@ -9,8 +9,14 @@ import {
   Calendar,
   FileText,
   UserPlus,
-  X
+  Pencil,
+  X,
+  Loader2
 } from 'lucide-react';
+import useApi from '../Components/useApi';
+import Swal from 'sweetalert2';
+
+const API = 'https://it-zone-invoice-server.vercel.app';
 
 // Shared style tokens (same look as ServiceTracking)
 const ui = {
@@ -21,145 +27,233 @@ const ui = {
   eyebrow:
     'text-xs uppercase tracking-widest px-3 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full font-semibold',
   btnPrimary:
-    'px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer',
+    'px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed',
   btnSuccess:
     'px-5 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-green-600/30 flex items-center justify-center gap-2 cursor-pointer',
   btnSecondary:
-    'px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm font-semibold transition-all cursor-pointer',
+    'px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm font-semibold transition-all cursor-pointer flex items-center justify-center gap-2',
   th: 'py-3 px-5'
 };
+
+// Defined outside the Ledger component so it isn't re-created on every render
+const ModalError = ({ message }) =>
+  message ? (
+    <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-3 py-2 rounded-xl text-xs font-medium">
+      {message}
+    </div>
+  ) : null;
+
+const emptyShopForm = { name: '', owner: '', phone: '', initialBalance: '', balanceType: 'RECEIVABLE' };
+const emptyPaymentForm = { amount: '', type: 'PAYMENT_IN', note: '' };
 
 const Ledger = () => {
   useEffect(() => {
     document.title = 'IT Zone-Inventory | Ledger';
   }, []);
 
-  // 1. Dynamic Shops State
-  const [shops, setShops] = useState([]);
-  const [selectedShopId, setSelectedShopId] = useState(null);
+  // 1. Shops (GET /ledger/shops)
+  const {
+    data: rawShops,
+    setData: setShops,
+    loading: shopsLoading,
+    error: apiError
+  } = useApi(`${API}/ledger/shops`);
 
-  // 2. Search & Modal States
+  // Safely extract the array whether the API returns a direct array or { data: [...] }
+  const shops = Array.isArray(rawShops)
+    ? rawShops
+    : rawShops?.data && Array.isArray(rawShops.data)
+    ? rawShops.data
+    : [];
+
+  const updateShops = (fn) =>
+    setShops(prev => {
+      const list = Array.isArray(prev) ? prev : prev?.data || [];
+      return fn(list);
+    });
+
+  const [selectedShopId, setSelectedShopId] = useState(null);
+  const selectedShop = shops.find(s => s._id === selectedShopId);
+
+  // 2. Transactions of the selected shop (GET /ledger/transactions?shopId=...)
+  const [transactions, setTransactions] = useState([]);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txError, setTxError] = useState('');
+
+  useEffect(() => {
+    if (!selectedShopId) {
+      setTransactions([]);
+      return;
+    }
+
+    let cancelled = false;
+    setTxLoading(true);
+    setTxError('');
+
+    fetch(`${API}/ledger/transactions?shopId=${selectedShopId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (cancelled) return;
+        if (data.success) setTransactions(data.data);
+        else setTxError(data.error || 'Failed to load transactions');
+      })
+      .catch(err => {
+        console.error('Error fetching transactions:', err);
+        if (!cancelled) setTxError('Network error occurred');
+      })
+      .finally(() => {
+        if (!cancelled) setTxLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedShopId]);
+
+  // 3. Search & modal states
   const [searchQuery, setSearchQuery] = useState('');
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isShopModalOpen, setIsShopModalOpen] = useState(false);
+  const [editingShopId, setEditingShopId] = useState(null); // null = create mode
+  const [shopForm, setShopForm] = useState(emptyShopForm);
+  const [paymentForm, setPaymentForm] = useState(emptyPaymentForm);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  // Selected Shop Details
-  const selectedShop = shops.find(s => s.id === selectedShopId);
-
-  // 3. Transactions State
-  const [transactions, setTransactions] = useState([]);
-
-  // Forms State
-  const [shopForm, setShopForm] = useState({
-    name: '',
-    owner: '',
-    phone: '',
-    initialBalance: 0,
-    balanceType: 'RECEIVABLE'
-  });
-
-  const [paymentForm, setPaymentForm] = useState({
-    amount: '',
-    type: 'PAYMENT_IN',
-    note: ''
-  });
-
-  // Handle Create New Shop
-  const handleAddShop = (e) => {
-    e.preventDefault();
-    if (!shopForm.name || !shopForm.phone) return;
-
-    const rawAmount = parseFloat(shopForm.initialBalance) || 0;
-    const calculatedBalance = shopForm.balanceType === 'RECEIVABLE' ? rawAmount : -rawAmount;
-
-    const newShop = {
-      id: Date.now().toString(),
-      name: shopForm.name,
-      owner: shopForm.owner || 'N/A',
-      phone: shopForm.phone,
-      balance: calculatedBalance
-    };
-
-    setShops(prev => [...prev, newShop]);
-    setSelectedShopId(newShop.id);
-    setShopForm({ name: '', owner: '', phone: '', initialBalance: 0, balanceType: 'RECEIVABLE' });
-    setIsShopModalOpen(false);
+  const openCreateShop = () => {
+    setEditingShopId(null);
+    setShopForm(emptyShopForm);
+    setErrorMsg('');
+    setIsShopModalOpen(true);
   };
 
-  // Handle Add Transaction for Selected Shop
-  const handleAddTransaction = (e) => {
+  const openEditShop = () => {
+    if (!selectedShop) return;
+    setEditingShopId(selectedShop._id);
+    setShopForm({
+      ...emptyShopForm,
+      name: selectedShop.name,
+      owner: selectedShop.owner === 'N/A' ? '' : selectedShop.owner,
+      phone: selectedShop.phone
+    });
+    setErrorMsg('');
+    setIsShopModalOpen(true);
+  };
+
+  const openTxModal = () => {
+    setPaymentForm(emptyPaymentForm);
+    setErrorMsg('');
+    setIsTxModalOpen(true);
+  };
+
+  const showSuccess = (text) =>
+    Swal.fire({
+      title: 'Success!',
+      text,
+      icon: 'success',
+      background: '#111827',
+      color: '#fff',
+      confirmButtonColor: '#2563eb',
+      timer: 1500,
+      showConfirmButton: false
+    });
+
+  // Create (POST) or edit (PATCH) a shop
+  const handleSaveShop = async (e) => {
     e.preventDefault();
-    if (!paymentForm.amount || !selectedShop) return;
-
-    const amountNum = parseFloat(paymentForm.amount);
-    if (isNaN(amountNum) || amountNum <= 0) return;
-
-    let balanceChange = 0;
-    let debit = 0;
-    let credit = 0;
-
-    switch (paymentForm.type) {
-      case 'PAYMENT_IN': // Got Money from Client (পাওনা কমল)
-        balanceChange = -amountNum;
-        credit = amountNum;
-        break;
-      case 'PAYMENT_OUT': // Paid Money to Supplier (দেনা কমল)
-        balanceChange = amountNum;
-        debit = amountNum;
-        break;
-      case 'INVOICE_OUT': // Sold Goods on Credit (পাওনা বাড়ল)
-        balanceChange = amountNum;
-        debit = amountNum;
-        break;
-      case 'INVOICE_IN': // Bought Goods on Credit / Take from Supplier (দেনা বাড়ল)
-        balanceChange = -amountNum;
-        credit = amountNum;
-        break;
-      default:
-        break;
+    if (!shopForm.name || !shopForm.phone) {
+      setErrorMsg('Shop name and phone number are required!');
+      return;
     }
 
-    const newBalance = selectedShop.balance + balanceChange;
+    setSubmitting(true);
+    try {
+      const isEdit = Boolean(editingShopId);
+      const res = await fetch(
+        isEdit ? `${API}/ledger/shops/${editingShopId}` : `${API}/ledger/shops`,
+        {
+          method: isEdit ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            isEdit
+              ? { name: shopForm.name, owner: shopForm.owner, phone: shopForm.phone }
+              : shopForm
+          )
+        }
+      );
+      const data = await res.json();
 
-    // Update Shop Balance
-    setShops(prevShops =>
-      prevShops.map(s => (s.id === selectedShop.id ? { ...s, balance: newBalance } : s))
-    );
-
-    // Record Transaction
-    const newTx = {
-      id: `TX-${Date.now()}`,
-      shopId: selectedShop.id,
-      date: new Date().toISOString().split('T')[0],
-      type: paymentForm.type,
-      ref: paymentForm.type.startsWith('PAYMENT')
-        ? `PAY-${Math.floor(100 + Math.random() * 900)}`
-        : `INV-${Math.floor(1000 + Math.random() * 9000)}`,
-      debit,
-      credit,
-      balance: newBalance,
-      note:
-        paymentForm.note ||
-        (paymentForm.type === 'PAYMENT_IN'
-          ? 'Payment Received'
-          : paymentForm.type === 'PAYMENT_OUT'
-          ? 'Payment Given'
-          : paymentForm.type === 'INVOICE_OUT'
-          ? 'Sales Invoice'
-          : 'Purchase Invoice')
-    };
-
-    setTransactions(prev => [...prev, newTx]);
-    setPaymentForm({ amount: '', type: 'PAYMENT_IN', note: '' });
-    setIsTxModalOpen(false);
+      if (data.success) {
+        if (isEdit) {
+          updateShops(list => list.map(s => (s._id === editingShopId ? { ...s, ...data.data } : s)));
+        } else {
+          updateShops(list => [data.data, ...list]);
+          setSelectedShopId(data.data._id);
+        }
+        setIsShopModalOpen(false);
+        setShopForm(emptyShopForm);
+        setEditingShopId(null);
+        setErrorMsg('');
+        showSuccess(isEdit ? 'Shop updated successfully.' : 'Shop created successfully.');
+      } else {
+        setErrorMsg(data.error || 'Failed to save shop');
+      }
+    } catch (err) {
+      console.error('Error saving shop:', err);
+      setErrorMsg('Network error occurred');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const activeShopTransactions = transactions.filter(t => t.shopId === selectedShopId);
+  // Add transaction (POST) - server updates the balance and returns both records
+  const handleAddTransaction = async (e) => {
+    e.preventDefault();
+    if (!selectedShop) return;
+
+    const amountNum = parseFloat(paymentForm.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setErrorMsg('Please enter an amount greater than 0!');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API}/ledger/transactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopId: selectedShop._id,
+          type: paymentForm.type,
+          amount: amountNum,
+          note: paymentForm.note
+        })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const { transaction, shop } = data.data;
+        updateShops(list => list.map(s => (s._id === shop._id ? shop : s)));
+        setTransactions(prev => [...prev, transaction]);
+        setIsTxModalOpen(false);
+        setPaymentForm(emptyPaymentForm);
+        setErrorMsg('');
+        showSuccess('Transaction saved successfully.');
+      } else {
+        setErrorMsg(data.error || 'Failed to save transaction');
+      }
+    } catch (err) {
+      console.error('Error adding transaction:', err);
+      setErrorMsg('Network error occurred');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const filteredShops = shops.filter(
     s =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.phone.includes(searchQuery)
+      (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.phone || '').includes(searchQuery)
   );
 
   // Transaction type badge styles (dark theme)
@@ -192,16 +286,27 @@ const Ledger = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <button onClick={() => setIsShopModalOpen(true)} className={ui.btnPrimary}>
+          <button onClick={openCreateShop} className={ui.btnPrimary}>
             <UserPlus size={18} /> Add New Shop/Vendor
           </button>
           {selectedShop && (
-            <button onClick={() => setIsTxModalOpen(true)} className={ui.btnSuccess}>
-              <Plus size={18} /> Add Transaction
-            </button>
+            <>
+              <button onClick={openEditShop} className={ui.btnSecondary}>
+                <Pencil size={16} /> Edit Shop
+              </button>
+              <button onClick={openTxModal} className={ui.btnSuccess}>
+                <Plus size={18} /> Add Transaction
+              </button>
+            </>
           )}
         </div>
       </div>
+
+      {apiError && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
+          {apiError}
+        </div>
+      )}
 
       {/* Shop Selector + Summary Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -231,7 +336,12 @@ const Ledger = () => {
           </div>
 
           <div className="space-y-1 max-h-64 overflow-y-auto">
-            {shops.length === 0 ? (
+            {shopsLoading ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-8">
+                <Loader2 size={24} className="text-blue-500 animate-spin" />
+                <p className="text-xs text-gray-400 font-medium">Loading shops...</p>
+              </div>
+            ) : shops.length === 0 ? (
               <div className="text-center py-6 text-gray-500 text-xs">
                 No shops added yet.<br />Click "Add New Shop/Vendor" to start.
               </div>
@@ -240,10 +350,10 @@ const Ledger = () => {
             ) : (
               filteredShops.map(shop => (
                 <button
-                  key={shop.id}
-                  onClick={() => setSelectedShopId(shop.id)}
+                  key={shop._id}
+                  onClick={() => setSelectedShopId(shop._id)}
                   className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between gap-2 text-sm cursor-pointer border ${
-                    selectedShopId === shop.id
+                    selectedShopId === shop._id
                       ? 'bg-blue-600/15 border-blue-500/30 text-blue-400 font-semibold'
                       : 'border-transparent text-gray-300 hover:bg-gray-800'
                   }`}
@@ -262,9 +372,9 @@ const Ledger = () => {
                     }`}
                   >
                     {shop.balance > 0
-                      ? `+৳${shop.balance} (পাবো)`
+                      ? `+৳${shop.balance.toLocaleString()} (পাবো)`
                       : shop.balance < 0
-                      ? `-৳${Math.abs(shop.balance)} (দেবো)`
+                      ? `-৳${Math.abs(shop.balance).toLocaleString()} (দেবো)`
                       : '৳0'}
                   </span>
                 </button>
@@ -326,9 +436,15 @@ const Ledger = () => {
             Transaction Log {selectedShop && `for ${selectedShop.name}`}
           </h3>
           <span className="text-xs bg-gray-800 text-gray-300 border border-gray-700 px-2.5 py-1 rounded-full font-semibold">
-            {activeShopTransactions.length} Entries
+            {transactions.length} Entries
           </span>
         </div>
+
+        {txError && (
+          <div className="mx-6 mt-4 bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl text-sm">
+            {txError}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-sm">
@@ -343,7 +459,16 @@ const Ledger = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/60 text-gray-300">
-              {activeShopTransactions.length === 0 ? (
+              {txLoading ? (
+                <tr>
+                  <td colSpan="6" className="text-center py-12">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <Loader2 size={32} className="text-blue-500 animate-spin" />
+                      <p className="text-sm text-gray-400 font-medium">Loading transactions...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : transactions.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="text-center py-8 text-gray-500 text-sm">
                     {selectedShop
@@ -352,13 +477,13 @@ const Ledger = () => {
                   </td>
                 </tr>
               ) : (
-                activeShopTransactions.map((tx) => {
+                transactions.map((tx) => {
                   const isDebitGreen = tx.type === 'PAYMENT_OUT'; // Paid supplier, payable reduced
                   const isCreditRed = tx.type === 'INVOICE_IN'; // Bought on credit, payable increased
                   const badge = typeBadge(tx.type);
 
                   return (
-                    <tr key={tx.id} className="hover:bg-gray-900/40 transition-all">
+                    <tr key={tx._id} className="hover:bg-gray-900/40 transition-all">
                       <td className="px-5 py-3.5 whitespace-nowrap">
                         <span className="flex items-center gap-2 text-gray-400">
                           <Calendar size={14} className="text-blue-400 shrink-0" />
@@ -377,20 +502,20 @@ const Ledger = () => {
                           isDebitGreen ? 'text-green-400' : 'text-blue-400'
                         }`}
                       >
-                        {tx.debit > 0 ? `৳${tx.debit}` : '-'}
+                        {tx.debit > 0 ? `৳${tx.debit.toLocaleString()}` : '-'}
                       </td>
                       <td
                         className={`px-5 py-3.5 text-right font-bold whitespace-nowrap ${
                           isCreditRed ? 'text-red-400' : 'text-green-400'
                         }`}
                       >
-                        {tx.credit > 0 ? `৳${tx.credit}` : '-'}
+                        {tx.credit > 0 ? `৳${tx.credit.toLocaleString()}` : '-'}
                       </td>
                       <td className="px-5 py-3.5 text-right font-bold text-white whitespace-nowrap">
                         {tx.balance > 0 ? (
-                          <span className="text-yellow-400">+৳{tx.balance} (পাবো)</span>
+                          <span className="text-yellow-400">+৳{tx.balance.toLocaleString()} (পাবো)</span>
                         ) : tx.balance < 0 ? (
-                          <span className="text-red-400">-৳{Math.abs(tx.balance)} (দেবো)</span>
+                          <span className="text-red-400">-৳{Math.abs(tx.balance).toLocaleString()} (দেবো)</span>
                         ) : (
                           '৳0'
                         )}
@@ -404,13 +529,14 @@ const Ledger = () => {
         </div>
       </div>
 
-      {/* Modal 1: Add New Shop */}
+      {/* Modal 1: Add / Edit Shop */}
       {isShopModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-[#111827] border border-gray-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
             <div className="p-5 border-b border-gray-800 flex items-center justify-between bg-gray-900/50">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <UserPlus size={18} className="text-blue-400" /> Add New Shop / Vendor
+                <UserPlus size={18} className="text-blue-400" />
+                {editingShopId ? 'Edit Shop / Vendor' : 'Add New Shop / Vendor'}
               </h3>
               <button
                 type="button"
@@ -421,7 +547,9 @@ const Ledger = () => {
               </button>
             </div>
 
-            <form onSubmit={handleAddShop} className="p-6 space-y-4">
+            <form onSubmit={handleSaveShop} className="p-6 space-y-4">
+              <ModalError message={errorMsg} />
+
               <div>
                 <label className={ui.label}>
                   Name / Shop <span className="text-red-400">*</span>
@@ -461,41 +589,42 @@ const Ledger = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={ui.label}>Opening Amount (৳)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={shopForm.initialBalance}
-                    onChange={(e) => setShopForm({ ...shopForm, initialBalance: e.target.value })}
-                    className={ui.input}
-                  />
-                </div>
+              {/* Opening balance can only be set when creating; after that it changes through transactions */}
+              {!editingShopId && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className={ui.label}>Opening Amount (৳)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={shopForm.initialBalance}
+                      onChange={(e) => setShopForm({ ...shopForm, initialBalance: e.target.value })}
+                      className={ui.input}
+                    />
+                  </div>
 
-                <div>
-                  <label className={ui.label}>Balance Type</label>
-                  <select
-                    value={shopForm.balanceType}
-                    onChange={(e) => setShopForm({ ...shopForm, balanceType: e.target.value })}
-                    className={`${ui.input} cursor-pointer`}
-                  >
-                    <option value="RECEIVABLE">পাবো (Receivable - Client)</option>
-                    <option value="PAYABLE">দেবো (Payable - Supplier)</option>
-                  </select>
+                  <div>
+                    <label className={ui.label}>Balance Type</label>
+                    <select
+                      value={shopForm.balanceType}
+                      onChange={(e) => setShopForm({ ...shopForm, balanceType: e.target.value })}
+                      className={`${ui.input} cursor-pointer`}
+                    >
+                      <option value="RECEIVABLE">পাবো (Receivable - Client)</option>
+                      <option value="PAYABLE">দেবো (Payable - Supplier)</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-800">
                 <button type="button" onClick={() => setIsShopModalOpen(false)} className={ui.btnSecondary}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
-                >
-                  Create
+                <button type="submit" disabled={submitting} className={ui.btnPrimary}>
+                  {submitting && <Loader2 size={16} className="animate-spin" />}
+                  {editingShopId ? 'Save Changes' : 'Create'}
                 </button>
               </div>
             </form>
@@ -521,6 +650,8 @@ const Ledger = () => {
             </div>
 
             <form onSubmit={handleAddTransaction} className="p-6 space-y-4">
+              <ModalError message={errorMsg} />
+
               <div>
                 <label className={ui.label}>Transaction Type</label>
                 <select
@@ -570,10 +701,8 @@ const Ledger = () => {
                 <button type="button" onClick={() => setIsTxModalOpen(false)} className={ui.btnSecondary}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
-                >
+                <button type="submit" disabled={submitting} className={ui.btnPrimary}>
+                  {submitting && <Loader2 size={16} className="animate-spin" />}
                   Save Entry
                 </button>
               </div>
