@@ -369,7 +369,7 @@ export default function POSScreen() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto mt-10 pb-12">
 
       {/* ----- PRINT ONLY INVOICE TEMPLATE ----- */}
       <div className="hidden print:flex flex-col justify-between bg-white text-black p-14 w-[210mm] h-[270mm] mx-auto font-sans box-border relative overflow-hidden">

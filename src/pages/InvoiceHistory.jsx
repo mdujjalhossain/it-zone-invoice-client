@@ -183,7 +183,7 @@ export default function InvoiceHistory() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto mt-10 pb-12">
 
       {/* Hidden Print Section */}
       {selectedInvoice && (

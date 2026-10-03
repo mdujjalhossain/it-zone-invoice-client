@@ -18,7 +18,7 @@ export default function Navbar() {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <header className="w-full bg-[#111827] border-b border-gray-800 sticky top-0 z-50 mb-10">
+    <header className="w-full bg-[#111827] border-b border-gray-800 sticky top-0 z-50">
       {/* Container wrapper for max-width and centering */}
       <div className="max-w-7xl mx-auto w-full px-6 h-16 flex items-center justify-between relative">
         

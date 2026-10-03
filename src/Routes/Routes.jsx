@@ -7,6 +7,7 @@ import Inventory from "../pages/Inventory";
 import ServiceTracking from "../pages/ServiceTracking";
 import POSScreen from "../pages/PosScreen";
 import Ledger from "../pages/Ledger";
+import Register from "../pages/Register";
 
 export const router = createBrowserRouter([
     {
@@ -37,6 +38,10 @@ export const router = createBrowserRouter([
             {
                 path: '/ledger',
                 Component: Ledger,
+            },
+            {
+                path: '/register',
+                Component: Register,
             },
 
         ]
