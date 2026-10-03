@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import {
   Search,
   Plus,
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import useApi from '../Components/useApi';
 import Swal from 'sweetalert2';
+import { AuthContext } from "../Contexts/AuthContext";
 
 const API = 'https://it-zone-invoice-server.vercel.app';
 
@@ -48,6 +49,8 @@ const emptyShopForm = { name: '', owner: '', phone: '', initialBalance: '', bala
 const emptyPaymentForm = { amount: '', type: 'PAYMENT_IN', note: '' };
 
 const Ledger = () => {
+  const { user } = useContext(AuthContext);
+
   useEffect(() => {
     document.title = 'IT Zone-Inventory | Ledger';
   }, []);
@@ -64,8 +67,8 @@ const Ledger = () => {
   const shops = Array.isArray(rawShops)
     ? rawShops
     : rawShops?.data && Array.isArray(rawShops.data)
-    ? rawShops.data
-    : [];
+      ? rawShops.data
+      : [];
 
   const updateShops = (fn) =>
     setShops(prev => {
@@ -206,7 +209,7 @@ const Ledger = () => {
     }
   };
 
-  // Delete the shop being edited (DELETE) - also removes its transactions on the server
+  // Delete the shop being edited (DELETE) - restricted to admin
   const handleDeleteShop = async () => {
     if (!editingShopId) return;
 
@@ -227,7 +230,15 @@ const Ledger = () => {
 
     setSubmitting(true);
     try {
-      const res = await fetch(`${API}/ledger/shops/${editingShopId}`, { method: 'DELETE' });
+      const res = await fetch(`${API}/ledger/shops/${editingShopId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        // Pass the current user's email so the backend can verify their role
+        body: JSON.stringify({ email: user?.email })
+      });
+
       const data = await res.json();
 
       if (data.success) {
@@ -238,8 +249,22 @@ const Ledger = () => {
         setShopForm(emptyShopForm);
         setErrorMsg('');
         showSuccess('Shop deleted successfully.');
-      } else {
-        setErrorMsg(data.error || 'Failed to delete shop');
+      } 
+      // else{setErrorMsg(data.error || 'Failed to delete shop');}    // Directly show SweetAlert2 error instead of setting inline error message
+      else {
+        // Directly show SweetAlert2 error instead of setting inline error message
+        Swal.fire({
+          icon: 'error',
+          title: '<span class="text-white text-lg font-bold">Access Denied</span>',
+          text: data.error || 'Only administrators can delete shops.',
+          background: '#111827',
+          color: '#fff',
+          confirmButtonColor: '#2563eb',
+          customClass: {
+            popup: 'border border-gray-800 rounded-2xl shadow-2xl',
+            confirmButton: 'rounded-xl px-5 py-2 text-sm font-semibold'
+          }
+        });
       }
     } catch (err) {
       console.error('Error deleting shop:', err);
@@ -397,30 +422,28 @@ const Ledger = () => {
                 <button
                   key={shop._id}
                   onClick={() => setSelectedShopId(shop._id)}
-                  className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between gap-2 text-sm cursor-pointer border ${
-                    selectedShopId === shop._id
+                  className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between gap-2 text-sm cursor-pointer border ${selectedShopId === shop._id
                       ? 'bg-blue-600/15 border-blue-500/30 text-blue-400 font-semibold'
                       : 'border-transparent text-gray-300 hover:bg-gray-800'
-                  }`}
+                    }`}
                 >
                   <div className="min-w-0">
                     <p className="truncate">{shop.name}</p>
                     <p className="text-xs text-gray-500 font-normal">{shop.phone}</p>
                   </div>
                   <span
-                    className={`text-xs px-2 py-0.5 rounded-lg font-bold border whitespace-nowrap ${
-                      shop.balance > 0
+                    className={`text-xs px-2 py-0.5 rounded-lg font-bold border whitespace-nowrap ${shop.balance > 0
                         ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20'
                         : shop.balance < 0
-                        ? 'bg-red-500/15 text-red-400 border-red-500/20'
-                        : 'bg-gray-700 text-gray-300 border-gray-600'
-                    }`}
+                          ? 'bg-red-500/15 text-red-400 border-red-500/20'
+                          : 'bg-gray-700 text-gray-300 border-gray-600'
+                      }`}
                   >
                     {shop.balance > 0
                       ? `+৳${shop.balance.toLocaleString()} (পাবো)`
                       : shop.balance < 0
-                      ? `-৳${Math.abs(shop.balance).toLocaleString()} (দেবো)`
-                      : '৳0'}
+                        ? `-৳${Math.abs(shop.balance).toLocaleString()} (দেবো)`
+                        : '৳0'}
                   </span>
                 </button>
               ))
@@ -543,16 +566,14 @@ const Ledger = () => {
                         {tx.note}
                       </td>
                       <td
-                        className={`px-5 py-3.5 text-right font-bold whitespace-nowrap ${
-                          isDebitGreen ? 'text-green-400' : 'text-blue-400'
-                        }`}
+                        className={`px-5 py-3.5 text-right font-bold whitespace-nowrap ${isDebitGreen ? 'text-green-400' : 'text-blue-400'
+                          }`}
                       >
                         {tx.debit > 0 ? `৳${tx.debit.toLocaleString()}` : '-'}
                       </td>
                       <td
-                        className={`px-5 py-3.5 text-right font-bold whitespace-nowrap ${
-                          isCreditRed ? 'text-red-400' : 'text-green-400'
-                        }`}
+                        className={`px-5 py-3.5 text-right font-bold whitespace-nowrap ${isCreditRed ? 'text-red-400' : 'text-green-400'
+                          }`}
                       >
                         {tx.credit > 0 ? `৳${tx.credit.toLocaleString()}` : '-'}
                       </td>

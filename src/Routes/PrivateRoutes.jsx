@@ -18,9 +18,17 @@ const PrivateRoutes = ({ children }) => {
           {/* Brand/Logo Loader */}
           <div className="flex items-center gap-2 relative z-10 mb-1">
             <span className="w-3 h-3 bg-blue-500 rounded-full inline-block shadow-[0_0_12px_#3b82f6] animate-ping"></span>
-            <span className="text-lg font-bold tracking-wider text-white">
-              Mood<span className="text-blue-500">IDM</span>
-            </span>
+            <svg viewBox="0 0 280 45" className="h-8 w-auto" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* 'I' with Red Dot */}
+                  <circle cx="12" cy="8" r="4" fill="#EF4444" />
+                  <text x="5" y="34" fontFamily="Georgia, serif" fontWeight="bold" fontSize="32" fill="#F3F4F6">I</text>
+                  <text x="22" y="34" fontFamily="Georgia, serif" fontWeight="bold" fontSize="32" fill="#F3F4F6">T</text>
+                  
+                  {/* Space & ZONE */}
+                  <text x="65" y="34" fontFamily="Georgia, serif" fontWeight="bold" fontSize="32" fill="#F3F4F6">Z</text>
+                  <text x="92" y="34" fontFamily="Georgia, serif" fontWeight="bold" fontSize="32" fill="#EF4444">O</text>
+                  <text x="123" y="34" fontFamily="Georgia, serif" fontWeight="bold" fontSize="32" fill="#F3F4F6">NE</text>
+                </svg>
           </div>
 
           {/* Animated Skeleton Lines */}

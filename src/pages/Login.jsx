@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import { AuthContext } from '../Contexts/AuthContext';
 
 // Where to go after login when the user didn't come from a protected page (change to your real home route)
-const DEFAULT_REDIRECT = '/dashboard';
+const DEFAULT_REDIRECT = '/';
 
 const swalBase = { background: '#111827', color: '#fff', confirmButtonColor: '#2563eb' };
 
