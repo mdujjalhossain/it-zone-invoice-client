@@ -1,9 +1,18 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useContext, useEffect, useState } from 'react';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { User, Phone, Mail, Lock, Eye, EyeOff, UserPlus, Loader2 } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { AuthContext } from '../Contexts/AuthContext';
+
+// Where to send an already signed-in user who opens this page (change to your real home route)
+const DEFAULT_REDIRECT = '/';
 
 const API = 'https://it-zone-invoice-server.vercel.app';
+
+const swalBase = { background: '#111827', color: '#fff', confirmButtonColor: '#2563eb' };
+
+// At least 8 characters, one uppercase, one lowercase, one number
+const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/;
 
 // Shared style tokens (same look as ServiceTracking / Ledger)
 const ui = {
@@ -39,19 +48,40 @@ export default function Register() {
     document.title = 'IT Zone-Inventory | Register';
   }, []);
 
+  const { createUser, updateUserProfile, user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from?.pathname || DEFAULT_REDIRECT;
 
   const [form, setForm] = useState(emptyForm);
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(''); // can hold text or a small JSX message
+  const [busy, setBusy] = useState(false);
+
+  // While the session is being checked
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
+        <div className={`${ui.card} p-8 flex flex-col items-center gap-3`}>
+          <Loader2 size={32} className="text-blue-500 animate-spin" />
+          <p className="text-sm text-gray-400 font-medium">Loading session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Already signed in. "busy" keeps us here while the sign-up flow is still running
+  // (Firebase signs the new user in first; we show the success message and then move on).
+  if (user && !busy) {
+    return <Navigate to={from} replace />;
+  }
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     setErrorMsg('');
   };
 
-  // Create account (POST)
+  // Create account with email & password
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -67,12 +97,8 @@ export default function Register() {
       setErrorMsg('Enter a valid 11-digit mobile number (e.g. 017XXXXXXXX).');
       return;
     }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      setErrorMsg('Enter a valid email address.');
-      return;
-    }
-    if (form.password.length < 8) {
-      setErrorMsg('Password must be at least 8 characters long.');
+    if (!passwordRegex.test(form.password)) {
+      setErrorMsg('Password must be at least 8 characters and include an uppercase letter, a lowercase letter and a number.');
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -80,37 +106,78 @@ export default function Register() {
       return;
     }
 
-    setSubmitting(true);
+    setBusy(true);
+    setErrorMsg('');
+    
     try {
-      const res = await fetch(`${API}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, email, password: form.password })
-      });
-      const data = await res.json();
+      // 1. Firebase Authentication Create User
+      await createUser(email, form.password);
+      await updateUserProfile(name, null);
 
-      if (data.success) {
-        setForm(emptyForm);
-        setErrorMsg('');
-        await Swal.fire({
-          title: 'Success!',
-          text: 'Account created successfully.',
-          icon: 'success',
-          background: '#111827',
-          color: '#fff',
-          confirmButtonColor: '#2563eb',
-          timer: 1500,
-          showConfirmButton: false
-        });
-        navigate('/login');
+      // 2. Save the user in MongoDB Database via Backend API
+      const dbResponse = await fetch(`${API}/users`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ 
+          name, 
+          email, 
+          phone, 
+          photoURL: '' 
+        })
+      });
+
+      const dbResult = await dbResponse.json();
+      
+      if (!dbResponse.ok) {
+        console.error('Database failed to save user:', dbResult);
+        throw new Error(dbResult.error || 'Failed to save user info to database.');
       } else {
-        setErrorMsg(data.error || 'Failed to create account');
+        console.log('User successfully saved to database:', dbResult);
       }
+
+      setForm(emptyForm);
+      await Swal.fire({
+        icon: 'success',
+        title: 'Registration Successful!',
+        text: `Welcome, ${name}! Your account has been created successfully.`,
+        ...swalBase
+      });
+      
+      navigate(from, { replace: true });
     } catch (err) {
-      console.error('Error registering user:', err);
-      setErrorMsg('Network error occurred');
+      console.error('Registration error:', err);
+      if (err.code) {
+        switch (err.code) {
+          case 'auth/email-already-in-use':
+            setErrorMsg(
+              <span>
+                This email is already registered. Please{' '}
+                <Link to="/login" className="text-blue-400 font-semibold underline hover:text-blue-300">
+                  sign in
+                </Link>{' '}
+                instead.
+              </span>
+            );
+            break;
+          case 'auth/invalid-email':
+            setErrorMsg('Enter a valid email address.');
+            break;
+          case 'auth/weak-password':
+            setErrorMsg('Password is too weak. Please choose a stronger one.');
+            break;
+          case 'auth/network-request-failed':
+            setErrorMsg('Network error occurred. Check your connection and try again.');
+            break;
+          default:
+            setErrorMsg(err.message || 'Registration failed. Please try again.');
+        }
+      } else {
+        setErrorMsg(err.message || 'Registration failed. Please try again.');
+      }
     } finally {
-      setSubmitting(false);
+      setBusy(false);
     }
   };
 
@@ -205,11 +272,14 @@ export default function Register() {
               />
             </Field>
           </div>
+          <p className="text-[11px] text-gray-500 -mt-2">
+            Use at least 8 characters with an uppercase letter, a lowercase letter and a number.
+          </p>
 
           <div className="pt-4 border-t border-gray-800 space-y-4">
-            <button type="submit" disabled={submitting} className={ui.btnPrimary}>
-              {submitting ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
-              {submitting ? 'Creating account...' : 'Create Account'}
+            <button type="submit" disabled={busy} className={ui.btnPrimary}>
+              {busy ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
+              {busy ? 'Please wait...' : 'Create Account'}
             </button>
 
             <p className="text-center text-xs text-gray-400">

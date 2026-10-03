@@ -8,6 +8,8 @@ import ServiceTracking from "../pages/ServiceTracking";
 import POSScreen from "../pages/PosScreen";
 import Ledger from "../pages/Ledger";
 import Register from "../pages/Register";
+import Login from "../pages/Login";
+import PrivateRoutes from "./PrivateRoutes";
 
 export const router = createBrowserRouter([
     {
@@ -37,11 +39,15 @@ export const router = createBrowserRouter([
             },
             {
                 path: '/ledger',
-                Component: Ledger,
+                element: <PrivateRoutes><Ledger /></PrivateRoutes>,
             },
             {
                 path: '/register',
                 Component: Register,
+            },
+            {
+                path: '/login',
+                Component: Login,
             },
 
         ]
