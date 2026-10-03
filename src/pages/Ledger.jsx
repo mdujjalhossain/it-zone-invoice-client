@@ -77,33 +77,32 @@ const Ledger = () => {
   const selectedShop = shops.find(s => s._id === selectedShopId);
 
   // 2. Transactions of the selected shop (GET /ledger/transactions?shopId=...)
-  const [transactions, setTransactions] = useState([]);
-  const [txLoading, setTxLoading] = useState(false);
-  const [txError, setTxError] = useState('');
+  // The fetched list is stored together with the shopId it belongs to, so "loading", the list and
+  // the error can all be derived while rendering (no setState calls in the effect body).
+  const [txState, setTxState] = useState({ shopId: null, list: [], error: '' });
+  const isTxCurrent = txState.shopId === selectedShopId;
+  const transactions = isTxCurrent ? txState.list : [];
+  const txError = isTxCurrent ? txState.error : '';
+  const txLoading = Boolean(selectedShopId) && !isTxCurrent;
 
   useEffect(() => {
-    if (!selectedShopId) {
-      setTransactions([]);
-      return;
-    }
+    if (!selectedShopId) return;
 
     let cancelled = false;
-    setTxLoading(true);
-    setTxError('');
 
     fetch(`${API}/ledger/transactions?shopId=${selectedShopId}`)
       .then(res => res.json())
       .then(data => {
         if (cancelled) return;
-        if (data.success) setTransactions(data.data);
-        else setTxError(data.error || 'Failed to load transactions');
+        setTxState({
+          shopId: selectedShopId,
+          list: data.success ? data.data : [],
+          error: data.success ? '' : data.error || 'Failed to load transactions'
+        });
       })
       .catch(err => {
         console.error('Error fetching transactions:', err);
-        if (!cancelled) setTxError('Network error occurred');
-      })
-      .finally(() => {
-        if (!cancelled) setTxLoading(false);
+        if (!cancelled) setTxState({ shopId: selectedShopId, list: [], error: 'Network error occurred' });
       });
 
     return () => {
@@ -278,7 +277,9 @@ const Ledger = () => {
       if (data.success) {
         const { transaction, shop } = data.data;
         updateShops(list => list.map(s => (s._id === shop._id ? shop : s)));
-        setTransactions(prev => [...prev, transaction]);
+        setTxState(prev =>
+          prev.shopId === shop._id ? { ...prev, list: [...prev.list, transaction] } : prev
+        );
         setIsTxModalOpen(false);
         setPaymentForm(emptyPaymentForm);
         setErrorMsg('');

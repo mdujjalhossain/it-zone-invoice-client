@@ -21,7 +21,7 @@ export default function Inventory() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // --- Pagination States ---
-  const [currentPage, setCurrentPage] = useState(1);
+  const [requestedPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20; // Limits items displayed per page
 
   const [newProduct, setNewProduct] = useState({
@@ -47,12 +47,9 @@ export default function Inventory() {
   // --- Pagination Boundary Calculations ---
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
 
-  // Handle boundary condition: if current page exceeds total pages after filtering/deletion, reset it safely
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages > 0 ? totalPages : 1);
-    }
-  }, [filteredProducts.length, totalPages, currentPage]);
+  // Handle boundary condition: if the requested page exceeds total pages after filtering/deletion,
+  // clamp it safely while rendering (no effect needed)
+  const currentPage = Math.min(requestedPage, totalPages);
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentProducts = filteredProducts.slice(startIndex, startIndex + itemsPerPage);
@@ -465,7 +462,7 @@ export default function Inventory() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
                 disabled={currentPage === 1}
                 className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-gray-200 border border-gray-800 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >
@@ -478,7 +475,7 @@ export default function Inventory() {
 
               <button
                 type="button"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
                 disabled={currentPage === totalPages}
                 className="px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-gray-200 border border-gray-800 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
               >

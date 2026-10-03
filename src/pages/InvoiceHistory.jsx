@@ -28,6 +28,7 @@ export default function InvoiceHistory() {
       const saved = localStorage.getItem('it_zone_deleted_invoices');
       return saved ? JSON.parse(saved) : [];
     } catch (e) {
+      console.error('Failed to save deleted invoices', e);
       return [];
     }
   });
@@ -42,7 +43,7 @@ export default function InvoiceHistory() {
   }, [deletedInvoices]);
 
   // --- Pagination States ---
-  const [currentPage, setCurrentPage] = useState(1);
+  const [requestedPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;  // Limits items displayed per page
 
   // Fully dynamic MongoDB document fields mapping (taking exact warrantyTerms from database invoice record)
@@ -97,11 +98,8 @@ export default function InvoiceHistory() {
   // Pagination boundaries
   const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage) || 1;
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages > 0 ? totalPages : 1);
-    }
-  }, [filteredInvoices.length, totalPages, currentPage]);
+  // If the requested page exceeds total pages (after filtering/deletion), clamp it while rendering (no effect needed)
+  const currentPage = Math.min(requestedPage, totalPages);
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentInvoices = filteredInvoices.slice(startIndex, startIndex + itemsPerPage);
@@ -507,7 +505,7 @@ export default function InvoiceHistory() {
 
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  onClick={() => setCurrentPage(Math.max(currentPage - 1, 1))}
                   disabled={currentPage === 1}
                   className="p-2 bg-gray-900 border border-gray-800 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer text-gray-300"
                 >
@@ -519,7 +517,7 @@ export default function InvoiceHistory() {
                 </div>
 
                 <button
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  onClick={() => setCurrentPage(Math.min(currentPage + 1, totalPages))}
                   disabled={currentPage === totalPages}
                   className="p-2 bg-gray-900 border border-gray-800 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer text-gray-300"
                 >

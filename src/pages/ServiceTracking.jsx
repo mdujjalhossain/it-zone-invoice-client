@@ -79,10 +79,16 @@ export default function ServiceTracking() {
     return matchesSearch;
   });
 
-  // Reset to page 1 on search or viewMode change
-  useEffect(() => {
+  // Reset to page 1 on search or viewMode change (done in the event handlers, not in an effect)
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
     setCurrentPage(1);
-  }, [searchTerm, viewMode]);
+  };
+
+  const handleViewModeChange = (mode) => {
+    setViewMode(mode);
+    setCurrentPage(1);
+  };
 
   // Pagination Slice Calculations
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -256,7 +262,7 @@ export default function ServiceTracking() {
       {/* Filter Buttons */}
       <div className="flex flex-wrap items-center gap-2 bg-[#111827] border border-gray-800 p-2 rounded-2xl w-fit shadow-md">
         <button
-          onClick={() => setViewMode('all')}
+          onClick={() => handleViewModeChange('all')}
           className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             viewMode === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
           }`}
@@ -264,7 +270,7 @@ export default function ServiceTracking() {
           All Tickets
         </button>
         <button
-          onClick={() => setViewMode('today')}
+          onClick={() => handleViewModeChange('today')}
           className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             viewMode === 'today' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
           }`}
@@ -272,7 +278,7 @@ export default function ServiceTracking() {
           Today's History
         </button>
         <button
-          onClick={() => setViewMode('monthly')}
+          onClick={() => handleViewModeChange('monthly')}
           className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             viewMode === 'monthly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
           }`}
@@ -280,7 +286,7 @@ export default function ServiceTracking() {
           Monthly History
         </button>
         <button
-          onClick={() => setViewMode('yearly')}
+          onClick={() => handleViewModeChange('yearly')}
           className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             viewMode === 'yearly' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800'
           }`}
@@ -306,7 +312,7 @@ export default function ServiceTracking() {
               type="text"
               placeholder="Quick search by ID, name, or phone..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
               className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2 text-sm text-gray-200 focus:outline-none focus:border-blue-500 transition-all"
             />
           </div>
