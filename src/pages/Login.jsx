@@ -3,13 +3,6 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { Mail, Lock, Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { AuthContext } from '../Contexts/AuthContext';
-const resetErrors = {
-  'auth/invalid-email': 'Enter a valid email address.',
-  'auth/user-not-found': 'No account found with this email.',
-  'auth/too-many-requests': 'Too many requests. Please wait a few minutes and try again.',
-  'auth/network-request-failed': 'Network error. Check your connection.'
-};
-setErrorMsg(resetErrors[err.code] || `Could not send the reset email (${err.code}).`);
 
 // Where to go after login when the user didn't come from a protected page
 const DEFAULT_REDIRECT = '/';
