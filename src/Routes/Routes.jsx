@@ -10,6 +10,7 @@ import Ledger from "../pages/Ledger";
 import Register from "../pages/Register";
 import Login from "../pages/Login";
 import PrivateRoutes from "./PrivateRoutes";
+// import AccessDeniedModal from "../pages/AccessDeniedModal";
 
 export const router = createBrowserRouter([
     {
@@ -19,23 +20,23 @@ export const router = createBrowserRouter([
         children: [
             {
                 index: true,
-                Component: Home
+                element: <PrivateRoutes><Home /></PrivateRoutes>
             },
             {
                 path: '/billing',
-                Component: POSScreen,
+                element: <PrivateRoutes><POSScreen /></PrivateRoutes>,
             },
             {
                 path: '/invoices',
-                Component: InvoiceHistory,
+                element: <PrivateRoutes><InvoiceHistory /></PrivateRoutes>,
             },
             {
                 path: '/inventory',
-                Component: Inventory,
+                element: <PrivateRoutes><Inventory /></PrivateRoutes>,
             },
             {
                 path: '/services',
-                Component: ServiceTracking,
+                element: <PrivateRoutes><ServiceTracking /></PrivateRoutes>,
             },
             {
                 path: '/ledger',

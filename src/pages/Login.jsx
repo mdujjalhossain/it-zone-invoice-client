@@ -4,14 +4,14 @@ import { Mail, Lock, Eye, EyeOff, LogIn, Loader2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { AuthContext } from '../Contexts/AuthContext';
 
-// Where to go after login when the user didn't come from a protected page (change to your real home route)
+// Where to go after login when the user didn't come from a protected page
 const DEFAULT_REDIRECT = '/';
 
 const swalBase = { background: '#111827', color: '#fff', confirmButtonColor: '#2563eb' };
 
-// Shared style tokens (same look as ServiceTracking / Ledger / Register)
+// Shared style tokens matching the rest of the application
 const ui = {
-  card: 'bg-[#111827] border border-gray-800 rounded-2xl shadow-xl',
+  card: 'bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl relative overflow-hidden',
   input:
     'w-full bg-gray-900 border border-gray-800 rounded-xl py-2 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-500 transition-all',
   label: 'block text-xs font-semibold text-gray-400 mb-1',
@@ -21,7 +21,6 @@ const ui = {
     'w-full px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed'
 };
 
-// Defined outside the Login component so it isn't re-created on every render
 const Field = ({ label, icon: Icon, required, children }) => (
   <div>
     <label className={ui.label}>
@@ -45,19 +44,18 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Send the user back to the page they were trying to open (set by a protected route), or to the default page
   const from = location.state?.from?.pathname || DEFAULT_REDIRECT;
 
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(''); // can hold text or a small JSX message
+  const [errorMsg, setErrorMsg] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // While the session is being checked
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
-        <div className={`${ui.card} p-8 flex flex-col items-center gap-3`}>
+      <div className="min-h-screen flex items-center justify-center bg-[#111827] p-4 relative overflow-hidden">
+        <div className="absolute -top-24 -left-24 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className={`${ui.card} p-8 flex flex-col items-center gap-3 border border-gray-800`}>
           <Loader2 size={32} className="text-blue-500 animate-spin" />
           <p className="text-sm text-gray-400 font-medium">Loading session...</p>
         </div>
@@ -65,7 +63,6 @@ export default function Login() {
     );
   }
 
-  // Already signed in. "busy" keeps us here while the sign-in flow is running.
   if (user && !busy) {
     return <Navigate to={from} replace />;
   }
@@ -75,7 +72,6 @@ export default function Login() {
     setErrorMsg('');
   };
 
-  // Sign in with email & password
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -132,7 +128,6 @@ export default function Login() {
     }
   };
 
-  // Send a password reset email
   const handleForgotPassword = async () => {
     const email = form.email.trim().toLowerCase();
 
@@ -165,8 +160,13 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 p-4">
-      <div className={`w-full max-w-md overflow-hidden ${ui.card}`}>
+    <div className="min-h-screen flex items-center justify-center bg-[#0b0f19] p-4 relative overflow-hidden">
+      
+      {/* Background Soft Glow Accents (Matching delete modal aesthetic) */}
+      <div className="absolute -top-20 -left-20 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div className={`w-full max-w-md ${ui.card}`}>
 
         {/* Header */}
         <div className="p-6 border-b border-gray-800 bg-gray-900/50">
@@ -231,7 +231,7 @@ export default function Login() {
           <div className="pt-4 border-t border-gray-800 space-y-4">
             <button type="submit" disabled={busy} className={ui.btnPrimary}>
               {busy ? <Loader2 size={18} className="animate-spin" /> : <LogIn size={18} />}
-              {busy ? 'Please wait...' : 'Sign In'}
+              {busy ? 'Please wait...' : 'Login'}
             </button>
 
             <p className="text-center text-xs text-gray-400">

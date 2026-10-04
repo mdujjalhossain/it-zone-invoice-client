@@ -155,7 +155,7 @@ export default function Register() {
               <span>
                 This email is already registered. Please{' '}
                 <Link to="/login" className="text-blue-400 font-semibold underline hover:text-blue-300">
-                  sign in
+                  Login
                 </Link>{' '}
                 instead.
               </span>
@@ -188,7 +188,7 @@ export default function Register() {
         {/* Header */}
         <div className="p-6 border-b border-gray-800 bg-gray-900/50">
           <span className={ui.eyebrow}>Create Account</span>
-          <h1 className="text-2xl font-extrabold text-white mt-2">Register for IT Zone Inventory</h1>
+          <h1 className="text-2xl font-extrabold text-white mt-2">Register as Admin or Staff</h1>
           <p className="text-sm text-gray-400 mt-1">
             Fill in your details to start managing stock, invoices and services.
           </p>
@@ -285,7 +285,7 @@ export default function Register() {
             <p className="text-center text-xs text-gray-400">
               Already have an account?{' '}
               <Link to="/login" className="text-blue-400 hover:text-blue-300 font-semibold transition-all">
-                Sign in
+                Login
               </Link>
             </p>
           </div>
